@@ -8,12 +8,19 @@ Momo is a high-performance, **unlocked**, and **telemetry-free** AI coding agent
 
 ---
 
-### **🚀 One-Click Installers**
+### **🚀 Single-Command Installation (All Systems)**
 
-| Platform | Command (Paste into terminal) |
-|----------|--------------------------------|
-| **Windows** | ``Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/erekgosh87-dotcom/momo/main/install.ps1'))`` |
-| **macOS / Linux** | ``curl -fsSL https://raw.githubusercontent.com/erekgosh87-dotcom/momo/main/install.sh | bash`` |
+#### **💻 Windows (Command Prompt - Run as Administrator)**
+Copy and paste this into an **Administrator Command Prompt**:
+```cmd
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/erekgosh87-dotcom/momo/main/install.ps1'))"
+```
+
+#### **💻 macOS / Linux (Bash/Zsh)**
+Paste this into your terminal:
+```bash
+curl -fsSL https://raw.githubusercontent.com/erekgosh87-dotcom/momo/main/install.sh | bash
+```
 
 ---
 
@@ -30,7 +37,7 @@ Communicate with Momo naturally using advanced voice interactions (requires comp
 #### **🛡️ Private & Secure**
 - **No Telemetry**: No usage stats, no IP logging, no "phone home".
 - **Local Vault**: Your conversation history stays on *your* machine.
-- **Prompt Guard**: Automatic detection and prompting for missing API keys.
+- **Persistent Key Storage**: Enter your API key once, and Momo will safely store it in `~/.momo/config.json`. It will never ask you again.
 
 ---
 
@@ -39,13 +46,12 @@ Communicate with Momo naturally using advanced voice interactions (requires comp
 As Momo is based on a snapshot of Claude Code, it supports all standard tools with additional internal capabilities:
 - `momo` : Launches the interactive REPL.
 - `momo -p "prompt"` : Headless mode for automated scripting.
-- `momo --version` : Shows version and "Unlocked" status.
+- `momo --about` : Shows version and "Unlocked" system info.
 
 ---
 
 ### **🏗️ Manual Build (For Developers)**
 
-If you want to build your own Momo binary:
 1.  **Install Bun**: `npm install -g bun`
 2.  **Pull Momo Source**: `git clone https://github.com/erekgosh87-dotcom/momo.git`
 3.  **Install Dependencies**: `bun install`
