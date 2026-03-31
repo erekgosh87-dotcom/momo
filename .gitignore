@@ -1,0 +1,10 @@
+node_modules/
+dist/
+momo.exe
+momo-dev.exe
+cli-dev.exe
+bun.exe
+bun.zip
+bun-dist/
+.env
+*.log
