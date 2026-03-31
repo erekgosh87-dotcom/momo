@@ -1,20 +1,20 @@
 type BrowserTool = { name: string }
 
-type ClaudeForChromePackage = {
+type MomoForChromePackage = {
   BROWSER_TOOLS?: BrowserTool[]
-  createClaudeForChromeMcpServer?: (...args: any[]) => any
+  createMomoForChromeMcpServer?: (...args: any[]) => any
 }
 
-let cachedPackage: ClaudeForChromePackage | null | undefined
+let cachedPackage: MomoForChromePackage | null | undefined
 
-function loadClaudeForChromePackage(): ClaudeForChromePackage | null {
+function loadMomoForChromePackage(): MomoForChromePackage | null {
   if (cachedPackage !== undefined) {
     return cachedPackage
   }
 
   try {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    cachedPackage = require('@ant/claude-for-chrome-mcp') as ClaudeForChromePackage
+    cachedPackage = require('@ant/claude-for-chrome-mcp') as MomoForChromePackage
     /* eslint-enable @typescript-eslint/no-require-imports */
   } catch {
     cachedPackage = null
@@ -24,9 +24,9 @@ function loadClaudeForChromePackage(): ClaudeForChromePackage | null {
 }
 
 export function getChromeBrowserTools(): BrowserTool[] {
-  return loadClaudeForChromePackage()?.BROWSER_TOOLS ?? []
+  return loadMomoForChromePackage()?.BROWSER_TOOLS ?? []
 }
 
-export async function importClaudeForChromePackage(): Promise<ClaudeForChromePackage> {
-  return (await import('@ant/claude-for-chrome-mcp')) as ClaudeForChromePackage
+export async function importMomoForChromePackage(): Promise<MomoForChromePackage> {
+  return (await import('@ant/claude-for-chrome-mcp')) as MomoForChromePackage
 }

@@ -26,10 +26,10 @@ import { KeyboardShortcutHint } from '../design-system/KeyboardShortcutHint.js';
 import { Spinner } from '../Spinner.js';
 import TextInput from '../TextInput.js';
 import { CapabilitiesSection } from './CapabilitiesSection.js';
-import type { ClaudeAIServerInfo, HTTPServerInfo, SSEServerInfo } from './types.js';
+import type { MomoAIServerInfo, HTTPServerInfo, SSEServerInfo } from './types.js';
 import { handleReconnectError, handleReconnectResult } from './utils/reconnectHelpers.js';
 type Props = {
-  server: SSEServerInfo | HTTPServerInfo | ClaudeAIServerInfo;
+  server: SSEServerInfo | HTTPServerInfo | MomoAIServerInfo;
   serverToolsCount: number;
   onViewTools: () => void;
   onCancel: () => void;
@@ -58,11 +58,11 @@ export function MCPRemoteServerMenu({
   const [authorizationUrl, setAuthorizationUrl] = React.useState<string | null>(null);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const authAbortControllerRef = useRef<AbortController | null>(null);
-  const [isClaudeAIAuthenticating, setIsClaudeAIAuthenticating] = useState(false);
-  const [claudeAIAuthUrl, setClaudeAIAuthUrl] = useState<string | null>(null);
-  const [isClaudeAIClearingAuth, setIsClaudeAIClearingAuth] = useState(false);
-  const [claudeAIClearAuthUrl, setClaudeAIClearAuthUrl] = useState<string | null>(null);
-  const [claudeAIClearAuthBrowserOpened, setClaudeAIClearAuthBrowserOpened] = useState(false);
+  const [isMomoAIAuthenticating, setIsMomoAIAuthenticating] = useState(false);
+  const [claudeAIAuthUrl, setMomoAIAuthUrl] = useState<string | null>(null);
+  const [isMomoAIClearingAuth, setIsMomoAIClearingAuth] = useState(false);
+  const [claudeAIClearAuthUrl, setMomoAIClearAuthUrl] = useState<string | null>(null);
+  const [claudeAIClearAuthBrowserOpened, setMomoAIClearAuthBrowserOpened] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const unmountedRef = useRef(false);
@@ -89,9 +89,9 @@ export function MCPRemoteServerMenu({
   // 2. It's connected and has tools (meaning it's working via some auth mechanism)
   const isEffectivelyAuthenticated = server.isAuthenticated || server.client.type === 'connected' && serverToolsCount > 0;
   const reconnectMcpServer = useMcpReconnect();
-  const handleClaudeAIAuthComplete = React.useCallback(async () => {
-    setIsClaudeAIAuthenticating(false);
-    setClaudeAIAuthUrl(null);
+  const handleMomoAIAuthComplete = React.useCallback(async () => {
+    setIsMomoAIAuthenticating(false);
+    setMomoAIAuthUrl(null);
     setIsReconnecting(true);
     try {
       const result = await reconnectMcpServer(server.name);
@@ -102,9 +102,9 @@ export function MCPRemoteServerMenu({
       if (success) {
         onComplete?.(`Authentication successful. Connected to ${server.name}.`);
       } else if (result.client.type === 'needs-auth') {
-        onComplete?.('Authentication successful, but server still requires authentication. You may need to manually restart Claude Code.');
+        onComplete?.('Authentication successful, but server still requires authentication. You may need to manually restart Momo Code.');
       } else {
-        onComplete?.('Authentication successful, but server reconnection failed. You may need to manually restart Claude Code for the changes to take effect.');
+        onComplete?.('Authentication successful, but server reconnection failed. You may need to manually restart Momo Code for the changes to take effect.');
       }
     } catch (err) {
       logEvent('tengu_claudeai_mcp_auth_completed', {
@@ -115,7 +115,7 @@ export function MCPRemoteServerMenu({
       setIsReconnecting(false);
     }
   }, [reconnectMcpServer, server.name, onComplete]);
-  const handleClaudeAIClearAuthComplete = React.useCallback(async () => {
+  const handleMomoAIClearAuthComplete = React.useCallback(async () => {
     await clearServerCache(server.name, {
       ...server.config,
       scope: server.scope
@@ -141,9 +141,9 @@ export function MCPRemoteServerMenu({
     });
     logEvent('tengu_claudeai_mcp_clear_auth_completed', {});
     onComplete?.(`Disconnected from ${server.name}.`);
-    setIsClaudeAIClearingAuth(false);
-    setClaudeAIClearAuthUrl(null);
-    setClaudeAIClearAuthBrowserOpened(false);
+    setIsMomoAIClearingAuth(false);
+    setMomoAIClearAuthUrl(null);
+    setMomoAIClearAuthBrowserOpened(false);
   }, [server.name, server.config, server.scope, setAppState, onComplete]);
 
   // Escape to cancel authentication flow
@@ -157,38 +157,38 @@ export function MCPRemoteServerMenu({
     isActive: isAuthenticating
   });
 
-  // Escape to cancel Claude AI authentication
+  // Escape to cancel Momo AI authentication
   useKeybinding('confirm:no', () => {
-    setIsClaudeAIAuthenticating(false);
-    setClaudeAIAuthUrl(null);
+    setIsMomoAIAuthenticating(false);
+    setMomoAIAuthUrl(null);
   }, {
     context: 'Confirmation',
-    isActive: isClaudeAIAuthenticating
+    isActive: isMomoAIAuthenticating
   });
 
-  // Escape to cancel Claude AI clear auth
+  // Escape to cancel Momo AI clear auth
   useKeybinding('confirm:no', () => {
-    setIsClaudeAIClearingAuth(false);
-    setClaudeAIClearAuthUrl(null);
-    setClaudeAIClearAuthBrowserOpened(false);
+    setIsMomoAIClearingAuth(false);
+    setMomoAIClearAuthUrl(null);
+    setMomoAIClearAuthBrowserOpened(false);
   }, {
     context: 'Confirmation',
-    isActive: isClaudeAIClearingAuth
+    isActive: isMomoAIClearingAuth
   });
 
   // Return key handling for authentication flows and 'c' to copy URL
   useInput((input, key) => {
-    if (key.return && isClaudeAIAuthenticating) {
-      void handleClaudeAIAuthComplete();
+    if (key.return && isMomoAIAuthenticating) {
+      void handleMomoAIAuthComplete();
     }
-    if (key.return && isClaudeAIClearingAuth) {
+    if (key.return && isMomoAIClearingAuth) {
       if (claudeAIClearAuthBrowserOpened) {
-        void handleClaudeAIClearAuthComplete();
+        void handleMomoAIClearAuthComplete();
       } else {
         // First Enter: open the browser
         const connectorsUrl = `${getOauthConfig().CLAUDE_AI_ORIGIN}/settings/connectors`;
-        setClaudeAIClearAuthUrl(connectorsUrl);
-        setClaudeAIClearAuthBrowserOpened(true);
+        setMomoAIClearAuthUrl(connectorsUrl);
+        setMomoAIClearAuthBrowserOpened(true);
         void openBrowser(connectorsUrl);
       }
     }
@@ -212,7 +212,7 @@ export function MCPRemoteServerMenu({
   // Count MCP prompts for this server (skills are shown in /skills, not here)
   const serverCommandsCount = filterMcpPromptsByServer(mcp.commands, server.name).length;
   const toggleMcpServer = useMcpToggleEnabled();
-  const handleClaudeAIAuth = React.useCallback(async () => {
+  const handleMomoAIAuth = React.useCallback(async () => {
     const claudeAiBaseUrl = getOauthConfig().CLAUDE_AI_ORIGIN;
     const accountInfo = getOauthAccountInfo();
     const orgUuid = accountInfo?.organizationUuid;
@@ -227,13 +227,13 @@ export function MCPRemoteServerMenu({
       // Fall back to settings/connectors if we don't have the required IDs
       authUrl = `${claudeAiBaseUrl}/settings/connectors`;
     }
-    setClaudeAIAuthUrl(authUrl);
-    setIsClaudeAIAuthenticating(true);
+    setMomoAIAuthUrl(authUrl);
+    setIsMomoAIAuthenticating(true);
     logEvent('tengu_claudeai_mcp_auth_started', {});
     await openBrowser(authUrl);
   }, [server.config]);
-  const handleClaudeAIClearAuth = React.useCallback(() => {
-    setIsClaudeAIClearingAuth(true);
+  const handleMomoAIClearAuth = React.useCallback(() => {
+    setIsMomoAIClearingAuth(true);
     logEvent('tengu_claudeai_mcp_clear_auth_started', {});
   }, []);
   const handleToggleEnabled = React.useCallback(async () => {
@@ -281,11 +281,11 @@ export function MCPRemoteServerMenu({
           const message = isEffectivelyAuthenticated ? `Authentication successful. Reconnected to ${server.name}.` : `Authentication successful. Connected to ${server.name}.`;
           onComplete?.(message);
         } else if (result_0.client.type === 'needs-auth') {
-          onComplete?.('Authentication successful, but server still requires authentication. You may need to manually restart Claude Code.');
+          onComplete?.('Authentication successful, but server still requires authentication. You may need to manually restart Momo Code.');
         } else {
           // result.client.type === 'failed'
           logMCPDebug(server.name, `Reconnection failed after authentication`);
-          onComplete?.('Authentication successful, but server reconnection failed. You may need to manually restart Claude Code for the changes to take effect.');
+          onComplete?.('Authentication successful, but server reconnection failed. You may need to manually restart Momo Code for the changes to take effect.');
         }
       }
     } catch (err_1) {
@@ -382,7 +382,7 @@ export function MCPRemoteServerMenu({
         </Box>
       </Box>;
   }
-  if (isClaudeAIAuthenticating) {
+  if (isMomoAIAuthenticating) {
     return <Box flexDirection="column" gap={1} padding={1}>
         <Text color="claude">Authenticating with {server.name}…</Text>
         <Box>
@@ -411,7 +411,7 @@ export function MCPRemoteServerMenu({
         </Box>
       </Box>;
   }
-  if (isClaudeAIClearingAuth) {
+  if (isMomoAIClearingAuth) {
     return <Box flexDirection="column" gap={1} padding={1}>
         <Text color="claude">Clear authentication for {server.name}</Text>
         {claudeAIClearAuthBrowserOpened ? <>
@@ -595,10 +595,10 @@ export function MCPRemoteServerMenu({
               await handleClearAuth();
               break;
             case 'claudeai-auth':
-              await handleClaudeAIAuth();
+              await handleMomoAIAuth();
               break;
             case 'claudeai-clear-auth':
-              handleClaudeAIClearAuth();
+              handleMomoAIClearAuth();
               break;
             case 'reconnectMcpServer':
               setIsReconnecting(true);

@@ -27,7 +27,7 @@ import {
 import type { Message } from '../types/message.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
-  getClaudeAIOAuthTokens,
+  getMomoAIOAuthTokens,
   handleOAuth401Error,
 } from '../utils/auth.js'
 import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js'
@@ -178,7 +178,7 @@ export async function initReplBridge(
     if (
       cfg.bridgeOauthDeadExpiresAt != null &&
       (cfg.bridgeOauthDeadFailCount ?? 0) >= 3 &&
-      getClaudeAIOAuthTokens()?.expiresAt === cfg.bridgeOauthDeadExpiresAt
+      getMomoAIOAuthTokens()?.expiresAt === cfg.bridgeOauthDeadExpiresAt
     ) {
       logForDebugging(
         `[bridge:repl] Skipping: cross-process backoff (dead token seen ${cfg.bridgeOauthDeadFailCount} times)`,
@@ -215,7 +215,7 @@ export async function initReplBridge(
     // + transient refresh endpoint blip (5xx/timeout/wifi-reconnect) would
     // falsely trip a buffered check; the still-valid token would connect fine.
     // Check actual expiry instead: past-expiry AND refresh-failed → truly dead.
-    const tokens = getClaudeAIOAuthTokens()
+    const tokens = getMomoAIOAuthTokens()
     if (tokens && tokens.expiresAt !== null && tokens.expiresAt <= Date.now()) {
       logBridgeSkip(
         'oauth_expired_unrefreshable',
@@ -415,7 +415,7 @@ export async function initReplBridge(
         `[bridge:repl] Skipping: ${versionError}`,
         true,
       )
-      onStateChange?.('failed', 'run `claude update` to upgrade')
+      onStateChange?.('failed', 'run `momo update` to upgrade')
       return null
     }
     logForDebugging(
@@ -456,7 +456,7 @@ export async function initReplBridge(
   const versionError = checkBridgeMinVersion()
   if (versionError) {
     logBridgeSkip('version_too_old', `[bridge:repl] Skipping: ${versionError}`)
-    onStateChange?.('failed', 'run `claude update` to upgrade')
+    onStateChange?.('failed', 'run `momo update` to upgrade')
     return null
   }
 

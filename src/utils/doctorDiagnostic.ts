@@ -36,8 +36,8 @@ import { SandboxManager } from './sandbox/sandbox-adapter.js'
 import { getManagedFilePath } from './settings/managedPath.js'
 import { CUSTOMIZATION_SURFACES } from './settings/types.js'
 import {
-  findClaudeAlias,
-  findValidClaudeAlias,
+  findMomoAlias,
+  findValidMomoAlias,
   getShellConfigPaths,
 } from './shellConfig.js'
 import { jsonParse } from './slowOperations.js'
@@ -230,8 +230,8 @@ async function detectMultipleInstallations(): Promise<
     const isWindows = getPlatform() === 'windows'
 
     // First check for active installations via bin/claude
-    // Linux / macOS have prefix/bin/claude and prefix/lib/node_modules
-    // Windows has prefix/claude and prefix/node_modules
+    // Linux / macOS have prefix/bin/momo and prefix/lib/node_modules
+    // Windows has prefix/momo and prefix/node_modules
     const globalBinPath = isWindows
       ? join(npmPrefix, 'claude')
       : join(npmPrefix, 'bin', 'claude')
@@ -267,7 +267,7 @@ async function detectMultipleInstallations(): Promise<
         installations.push({ type: 'npm-global', path: globalBinPath })
       }
     } else {
-      // If no bin/claude exists, check for orphaned packages (no bin/claude symlink)
+      // If no bin/momo exists, check for orphaned packages (no bin/momo symlink)
       for (const packageName of packagesToCheck) {
         const globalPackagePath = isWindows
           ? join(npmPrefix, 'node_modules', packageName)
@@ -435,14 +435,14 @@ async function detectConfigurationIssues(
     if (type === 'npm-local' && config.installMethod !== 'local') {
       warnings.push({
         issue: `Running from local installation but config install method is '${config.installMethod}'`,
-        fix: 'Consider using native installation: claude install',
+        fix: 'Consider using native installation: momo install',
       })
     }
 
     if (type === 'native' && config.installMethod !== 'native') {
       warnings.push({
         issue: `Running native installation but config install method is '${config.installMethod}'`,
-        fix: 'Run claude install to update configuration',
+        fix: 'Run momo install to update configuration',
       })
     }
   }
@@ -450,20 +450,20 @@ async function detectConfigurationIssues(
   if (type === 'npm-global' && (await localInstallationExists())) {
     warnings.push({
       issue: 'Local installation exists but not being used',
-      fix: 'Consider using native installation: claude install',
+      fix: 'Consider using native installation: momo install',
     })
   }
 
-  const existingAlias = await findClaudeAlias()
-  const validAlias = await findValidClaudeAlias()
+  const existingAlias = await findMomoAlias()
+  const validAlias = await findValidMomoAlias()
 
   // Check if running local installation but it's not in PATH
   if (type === 'npm-local') {
-    // Check if claude is already accessible via PATH
+    // Check if momo is already accessible via PATH
     const whichResult = await which('claude')
     const claudeInPath = !!whichResult
 
-    // Only show warning if claude is NOT in PATH AND no valid alias exists
+    // Only show warning if momo is NOT in PATH AND no valid alias exists
     if (!claudeInPath && !validAlias) {
       if (existingAlias) {
         // Alias exists but points to invalid target
@@ -580,7 +580,7 @@ export async function getDoctorDiagnostic(): Promise<DiagnosticInfo> {
     if (!hasUpdatePermissions && !getAutoUpdaterDisabledReason()) {
       warnings.push({
         issue: 'Insufficient permissions for auto-updates',
-        fix: 'Do one of: (1) Re-install node without sudo, or (2) Use `claude install` for native installation',
+        fix: 'Do one of: (1) Re-install node without sudo, or (2) Use `momo install` for native installation',
       })
     }
   }

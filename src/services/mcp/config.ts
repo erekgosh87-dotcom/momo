@@ -6,7 +6,7 @@ import { dirname, join, parse } from 'path'
 import { getPlatform } from 'src/utils/platform.js'
 import type { PluginError } from '../../types/plugin.js'
 import { getPluginErrorMessage } from '../../types/plugin.js'
-import { isClaudeInChromeMCPServer } from '../../utils/claudeInChrome/common.js'
+import { isMomoInChromeMCPServer } from '../../utils/claudeInChrome/common.js'
 import {
   getCurrentProjectConfig,
   getGlobalConfig,
@@ -40,7 +40,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from '../analytics/index.js'
-import { fetchClaudeAIMcpConfigsIfEligible } from './claudeai.js'
+import { fetchMomoAIMcpConfigsIfEligible } from './claudeai.js'
 import { expandEnvVarsInString } from './envExpansion.js'
 import {
   type ConfigScope,
@@ -268,7 +268,7 @@ export function dedupPluginMcpServers(
 /**
  * Filter claude.ai connectors, dropping any whose signature matches an enabled
  * manually-configured server. Manual wins: a user who wrote .mcp.json or ran
- * `claude mcp add` expressed higher intent than a connector toggled in the web UI.
+ * `momo mcp add` expressed higher intent than a connector toggled in the web UI.
  *
  * Connector keys are `claude.ai <DisplayName>` so they never key-collide with
  * manual servers in the merge — this content-based check catches the case where
@@ -278,7 +278,7 @@ export function dedupPluginMcpServers(
  * Only enabled manual servers count as dedup targets — a disabled manual server
  * mustn't suppress its connector twin, or neither runs.
  */
-export function dedupClaudeAiMcpServers(
+export function dedupMomoAiMcpServers(
   claudeAiServers: Record<string, ScopedMcpServerConfig>,
   manualServers: Record<string, ScopedMcpServerConfig>,
 ): {
@@ -513,7 +513,7 @@ function isMcpServerAllowedByPolicy(
  * returned so callers can warn the user.
  *
  * Intended for user-controlled config entry points that bypass the policy filter
- * in getClaudeCodeMcpConfigs(): --mcp-config (main.tsx) and the mcp_set_servers
+ * in getMomoCodeMcpConfigs(): --mcp-config (main.tsx) and the mcp_set_servers
  * control message (print.ts, SDK V2 Query.setMcpServers()).
  *
  * SDK-type servers are exempt — they are SDK-managed transport placeholders,
@@ -634,7 +634,7 @@ export async function addMcpConfig(
   }
 
   // Block reserved server name "claude-in-chrome"
-  if (isClaudeInChromeMCPServer(name)) {
+  if (isMomoInChromeMCPServer(name)) {
     throw new Error(`Cannot add MCP server "${name}": this name is reserved.`)
   }
 
@@ -1034,7 +1034,7 @@ export function getMcpConfigByName(name: string): ScopedMcpServerConfig | null {
   const { servers: enterpriseServers } = getMcpConfigsByScope('enterprise')
 
   // When MCP is locked to plugin-only, only enterprise servers are reachable
-  // by name. User/project/local servers are blocked — same as getClaudeCodeMcpConfigs().
+  // by name. User/project/local servers are blocked — same as getMomoCodeMcpConfigs().
   if (isRestrictedToPluginOnly('mcp')) {
     return enterpriseServers[name] ?? null
   }
@@ -1060,15 +1060,15 @@ export function getMcpConfigByName(name: string): ScopedMcpServerConfig | null {
 }
 
 /**
- * Get Claude Code MCP configurations (excludes claude.ai servers from the
+ * Get Momo Code MCP configurations (excludes claude.ai servers from the
  * returned set — they're fetched separately and merged by callers).
  * This is fast: only local file reads; no awaited network calls on the
  * critical path. The optional extraDedupTargets promise (e.g. the in-flight
  * claude.ai connector fetch) is awaited only after loadAllPluginsCacheOnly() completes,
  * so the two overlap rather than serialize.
- * @returns Claude Code server configurations with appropriate scopes
+ * @returns Momo Code server configurations with appropriate scopes
  */
-export async function getClaudeCodeMcpConfigs(
+export async function getMomoCodeMcpConfigs(
   dynamicServers: Record<string, ScopedMcpServerConfig> = {},
   extraDedupTargets: Promise<
     Record<string, ScopedMcpServerConfig>
@@ -1252,7 +1252,7 @@ export async function getClaudeCodeMcpConfigs(
 
 /**
  * Get all MCP configurations across all scopes, including claude.ai servers.
- * This may be slow due to network calls - use getClaudeCodeMcpConfigs() for fast startup.
+ * This may be slow due to network calls - use getMomoCodeMcpConfigs() for fast startup.
  * @returns All server configurations with appropriate scopes
  */
 export async function getAllMcpConfigs(): Promise<{
@@ -1261,13 +1261,13 @@ export async function getAllMcpConfigs(): Promise<{
 }> {
   // In enterprise mode, don't load claude.ai servers (enterprise has exclusive control)
   if (doesEnterpriseMcpConfigExist()) {
-    return getClaudeCodeMcpConfigs()
+    return getMomoCodeMcpConfigs()
   }
 
-  // Kick off the claude.ai fetch before getClaudeCodeMcpConfigs so it overlaps
+  // Kick off the claude.ai fetch before getMomoCodeMcpConfigs so it overlaps
   // with loadAllPluginsCacheOnly() inside. Memoized — the awaited call below is a cache hit.
-  const claudeaiPromise = fetchClaudeAIMcpConfigsIfEligible()
-  const { servers: claudeCodeServers, errors } = await getClaudeCodeMcpConfigs(
+  const claudeaiPromise = fetchMomoAIMcpConfigsIfEligible()
+  const { servers: claudeCodeServers, errors } = await getMomoCodeMcpConfigs(
     {},
     claudeaiPromise,
   )
@@ -1278,13 +1278,13 @@ export async function getAllMcpConfigs(): Promise<{
   // Suppress claude.ai connectors that duplicate an enabled manual server.
   // Keys never collide (`slack` vs `claude.ai Slack`) so the merge below
   // won't catch this — need content-based dedup by URL signature.
-  const { servers: dedupedClaudeAi } = dedupClaudeAiMcpServers(
+  const { servers: dedupedMomoAi } = dedupMomoAiMcpServers(
     claudeaiMcpServers,
     claudeCodeServers,
   )
 
   // Merge with claude.ai having lowest precedence
-  const servers = Object.assign({}, dedupedClaudeAi, claudeCodeServers)
+  const servers = Object.assign({}, dedupedMomoAi, claudeCodeServers)
 
   return { servers, errors }
 }

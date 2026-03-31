@@ -22,7 +22,7 @@ import {
 import {
   isOAuthTokenExpired,
   refreshOAuthToken,
-  shouldUseClaudeAIAuth,
+  shouldUseMomoAIAuth,
 } from '../services/oauth/client.js'
 import { getOauthProfileFromOauthToken } from '../services/oauth/getOauthProfile.js'
 import type { OAuthTokens, SubscriptionType } from '../services/oauth/types.js'
@@ -49,7 +49,7 @@ import {
 } from './config.js'
 import { logAntError, logForDebugging } from './debug.js'
 import {
-  getClaudeConfigHomeDir,
+  getMomoConfigHomeDir,
   isBareMode,
   isEnvTruthy,
   isRunningOnHomespace,
@@ -81,7 +81,7 @@ import { clearToolSchemaCache } from './toolSchemaCache.js'
 const DEFAULT_API_KEY_HELPER_TTL = 5 * 60 * 1000
 
 /**
- * CCR and Claude Desktop spawn the CLI with OAuth and should never fall back
+ * CCR and Momo Desktop spawn the CLI with OAuth and should never fall back
  * to the user's ~/.claude/settings.json API-key config (apiKeyHelper,
  * env.ANTHROPIC_API_KEY, env.ANTHROPIC_AUTH_TOKEN). Those settings exist for
  * the user's terminal CLI, not managed sessions. Without this guard, a user
@@ -101,11 +101,11 @@ export function isAnthropicAuthEnabled(): boolean {
   // --bare: API-key-only, never OAuth.
   if (isBareMode()) return false
 
-  // `claude ssh` remote: ANTHROPIC_UNIX_SOCKET tunnels API calls through a
+  // `momo ssh` remote: ANTHROPIC_UNIX_SOCKET tunnels API calls through a
   // local auth-injecting proxy. The launcher sets CLAUDE_CODE_OAUTH_TOKEN as a
   // placeholder iff the local side is a subscriber (so the remote includes the
   // oauth-2025 beta header to match what the proxy will inject). The remote's
-  // ~/.claude settings (apiKeyHelper, settings.env.ANTHROPIC_API_KEY) MUST NOT
+  // ~/.momo settings (apiKeyHelper, settings.env.ANTHROPIC_API_KEY) MUST NOT
   // flip this — they'd cause a header mismatch with the proxy and a bogus
   // "invalid x-api-key" from the API. See src/ssh/sshAuthProxy.ts.
   if (process.env.ANTHROPIC_UNIX_SOCKET) {
@@ -197,8 +197,8 @@ export function getAuthTokenSource() {
     return { source: 'apiKeyHelper' as const, hasToken: true }
   }
 
-  const oauthTokens = getClaudeAIOAuthTokens()
-  if (shouldUseClaudeAIAuth(oauthTokens?.scopes) && oauthTokens?.accessToken) {
+  const oauthTokens = getMomoAIOAuthTokens()
+  if (shouldUseMomoAIAuth(oauthTokens?.scopes) && oauthTokens?.accessToken) {
     return { source: 'claude.ai' as const, hasToken: true }
   }
 
@@ -253,7 +253,7 @@ export function getAnthropicApiKeyWithSource(
     ? undefined
     : process.env.ANTHROPIC_API_KEY
 
-  // Always check for direct environment variable when the user ran claude --print.
+  // Always check for direct environment variable when the user ran momo --print.
   // This is useful for CI, etc.
   if (preferThirdPartyAuthentication() && apiKeyEnv) {
     return {
@@ -1195,7 +1195,7 @@ export function saveOAuthTokensIfNeeded(tokens: OAuthTokens): {
   success: boolean
   warning?: string
 } {
-  if (!shouldUseClaudeAIAuth(tokens.scopes)) {
+  if (!shouldUseMomoAIAuth(tokens.scopes)) {
     logEvent('tengu_oauth_tokens_not_claude_ai', {})
     return { success: true }
   }
@@ -1236,7 +1236,7 @@ export function saveOAuthTokensIfNeeded(tokens: OAuthTokens): {
       logEvent('tengu_oauth_tokens_save_failed', { storageBackend })
     }
 
-    getClaudeAIOAuthTokens.cache?.clear?.()
+    getMomoAIOAuthTokens.cache?.clear?.()
     clearBetasCaches()
     clearToolSchemaCache()
     return updateStatus
@@ -1252,7 +1252,7 @@ export function saveOAuthTokensIfNeeded(tokens: OAuthTokens): {
   }
 }
 
-export const getClaudeAIOAuthTokens = memoize((): OAuthTokens | null => {
+export const getMomoAIOAuthTokens = memoize((): OAuthTokens | null => {
   // --bare: API-key-only. No OAuth env tokens, no keychain, no credentials file.
   if (isBareMode()) return null
 
@@ -1306,7 +1306,7 @@ export const getClaudeAIOAuthTokens = memoize((): OAuthTokens | null => {
  * server (e.g., due to clock corrections after token was issued).
  */
 export function clearOAuthTokenCache(): void {
-  getClaudeAIOAuthTokens.cache?.clear?.()
+  getMomoAIOAuthTokens.cache?.clear?.()
   clearKeychainCache()
 }
 
@@ -1320,7 +1320,7 @@ let lastCredentialsMtimeMs = 0
 async function invalidateOAuthCacheIfDiskChanged(): Promise<void> {
   try {
     const { mtimeMs } = await stat(
-      join(getClaudeConfigHomeDir(), '.credentials.json'),
+      join(getMomoConfigHomeDir(), '.credentials.json'),
     )
     if (mtimeMs !== lastCredentialsMtimeMs) {
       lastCredentialsMtimeMs = mtimeMs
@@ -1331,7 +1331,7 @@ async function invalidateOAuthCacheIfDiskChanged(): Promise<void> {
     // the memoize so it delegates to the keychain cache's 30s TTL instead
     // of caching forever on top. `security find-generic-password` is
     // ~15ms; bounded to once per 30s by the keychain cache.
-    getClaudeAIOAuthTokens.cache?.clear?.()
+    getMomoAIOAuthTokens.cache?.clear?.()
   }
 }
 
@@ -1375,7 +1375,7 @@ async function handleOAuth401ErrorImpl(
 ): Promise<boolean> {
   // Clear caches and re-read from keychain (async — sync read blocks ~100ms/call)
   clearOAuthTokenCache()
-  const currentTokens = await getClaudeAIOAuthTokensAsync()
+  const currentTokens = await getMomoAIOAuthTokensAsync()
 
   if (!currentTokens?.refreshToken) {
     return false
@@ -1396,7 +1396,7 @@ async function handleOAuth401ErrorImpl(
  * Delegates to the sync memoized version for env var / file descriptor tokens
  * (which don't hit the keychain), and only uses async for storage reads.
  */
-export async function getClaudeAIOAuthTokensAsync(): Promise<OAuthTokens | null> {
+export async function getMomoAIOAuthTokensAsync(): Promise<OAuthTokens | null> {
   if (isBareMode()) return null
 
   // Env var and FD tokens are sync and don't hit the keychain
@@ -1404,7 +1404,7 @@ export async function getClaudeAIOAuthTokensAsync(): Promise<OAuthTokens | null>
     process.env.CLAUDE_CODE_OAUTH_TOKEN ||
     getOAuthTokenFromFileDescriptor()
   ) {
-    return getClaudeAIOAuthTokens()
+    return getMomoAIOAuthTokens()
   }
 
   try {
@@ -1454,7 +1454,7 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(
 
   // First check if token is expired with cached value
   // Skip this check if force=true (server already told us token is bad)
-  const tokens = getClaudeAIOAuthTokens()
+  const tokens = getMomoAIOAuthTokens()
   if (!force) {
     if (!tokens?.refreshToken || !isOAuthTokenExpired(tokens.expiresAt)) {
       return false
@@ -1465,15 +1465,15 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(
     return false
   }
 
-  if (!shouldUseClaudeAIAuth(tokens.scopes)) {
+  if (!shouldUseMomoAIAuth(tokens.scopes)) {
     return false
   }
 
   // Re-read tokens async to check if they're still expired
   // Another process might have refreshed them
-  getClaudeAIOAuthTokens.cache?.clear?.()
+  getMomoAIOAuthTokens.cache?.clear?.()
   clearKeychainCache()
-  const freshTokens = await getClaudeAIOAuthTokensAsync()
+  const freshTokens = await getMomoAIOAuthTokensAsync()
   if (
     !freshTokens?.refreshToken ||
     !isOAuthTokenExpired(freshTokens.expiresAt)
@@ -1482,7 +1482,7 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(
   }
 
   // Tokens are still expired, try to acquire lock and refresh
-  const claudeDir = getClaudeConfigHomeDir()
+  const claudeDir = getMomoConfigHomeDir()
   await mkdir(claudeDir, { recursive: true })
 
   let release
@@ -1516,9 +1516,9 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(
   }
   try {
     // Check one more time after acquiring lock
-    getClaudeAIOAuthTokens.cache?.clear?.()
+    getMomoAIOAuthTokens.cache?.clear?.()
     clearKeychainCache()
-    const lockedTokens = await getClaudeAIOAuthTokensAsync()
+    const lockedTokens = await getMomoAIOAuthTokensAsync()
     if (
       !lockedTokens?.refreshToken ||
       !isOAuthTokenExpired(lockedTokens.expiresAt)
@@ -1529,25 +1529,25 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(
 
     logEvent('tengu_oauth_token_refresh_starting', {})
     const refreshedTokens = await refreshOAuthToken(lockedTokens.refreshToken, {
-      // For Claude.ai subscribers, omit scopes so the default
+      // For Momo.ai subscribers, omit scopes so the default
       // CLAUDE_AI_OAUTH_SCOPES applies — this allows scope expansion
       // (e.g. adding user:file_upload) on refresh without re-login.
-      scopes: shouldUseClaudeAIAuth(lockedTokens.scopes)
+      scopes: shouldUseMomoAIAuth(lockedTokens.scopes)
         ? undefined
         : lockedTokens.scopes,
     })
     saveOAuthTokensIfNeeded(refreshedTokens)
 
     // Clear the cache after refreshing token
-    getClaudeAIOAuthTokens.cache?.clear?.()
+    getMomoAIOAuthTokens.cache?.clear?.()
     clearKeychainCache()
     return true
   } catch (error) {
     logError(error)
 
-    getClaudeAIOAuthTokens.cache?.clear?.()
+    getMomoAIOAuthTokens.cache?.clear?.()
     clearKeychainCache()
-    const currentTokens = await getClaudeAIOAuthTokensAsync()
+    const currentTokens = await getMomoAIOAuthTokensAsync()
     if (currentTokens && !isOAuthTokenExpired(currentTokens.expiresAt)) {
       logEvent('tengu_oauth_token_refresh_race_recovered', {})
       return true
@@ -1561,12 +1561,12 @@ async function checkAndRefreshOAuthTokenIfNeededImpl(
   }
 }
 
-export function isClaudeAISubscriber(): boolean {
+export function isMomoAISubscriber(): boolean {
   if (!isAnthropicAuthEnabled()) {
     return false
   }
 
-  return shouldUseClaudeAIAuth(getClaudeAIOAuthTokens()?.scopes)
+  return shouldUseMomoAIAuth(getMomoAIOAuthTokens()?.scopes)
 }
 
 /**
@@ -1579,13 +1579,13 @@ export function isClaudeAISubscriber(): boolean {
  */
 export function hasProfileScope(): boolean {
   return (
-    getClaudeAIOAuthTokens()?.scopes?.includes(CLAUDE_AI_PROFILE_SCOPE) ?? false
+    getMomoAIOAuthTokens()?.scopes?.includes(CLAUDE_AI_PROFILE_SCOPE) ?? false
   )
 }
 
 export function is1PApiCustomer(): boolean {
   // 1P API customers are users who are NOT:
-  // 1. Claude.ai subscribers (Max, Pro, Enterprise, Team)
+  // 1. Momo.ai subscribers (Max, Pro, Enterprise, Team)
   // 2. Vertex AI users
   // 3. AWS Bedrock users
   // 4. Foundry users
@@ -1599,8 +1599,8 @@ export function is1PApiCustomer(): boolean {
     return false
   }
 
-  // Exclude Claude.ai subscribers
-  if (isClaudeAISubscriber()) {
+  // Exclude Momo.ai subscribers
+  if (isMomoAISubscriber()) {
     return false
   }
 
@@ -1624,8 +1624,8 @@ export function isOverageProvisioningAllowed(): boolean {
   const accountInfo = getOauthAccountInfo()
   const billingType = accountInfo?.billingType
 
-  // Must be a Claude subscriber with a supported subscription type
-  if (!isClaudeAISubscriber() || !billingType) {
+  // Must be a Momo subscriber with a supported subscription type
+  if (!isMomoAISubscriber() || !billingType) {
     return false
   }
 
@@ -1668,7 +1668,7 @@ export function getSubscriptionType(): SubscriptionType | null {
   if (!isAnthropicAuthEnabled()) {
     return null
   }
-  const oauthTokens = getClaudeAIOAuthTokens()
+  const oauthTokens = getMomoAIOAuthTokens()
   if (!oauthTokens) {
     return null
   }
@@ -1703,7 +1703,7 @@ export function getRateLimitTier(): string | null {
   if (!isAnthropicAuthEnabled()) {
     return null
   }
-  const oauthTokens = getClaudeAIOAuthTokens()
+  const oauthTokens = getMomoAIOAuthTokens()
   if (!oauthTokens) {
     return null
   }
@@ -1716,15 +1716,15 @@ export function getSubscriptionName(): string {
 
   switch (subscriptionType) {
     case 'enterprise':
-      return 'Claude Enterprise'
+      return 'Momo Enterprise'
     case 'team':
-      return 'Claude Team'
+      return 'Momo Team'
     case 'max':
-      return 'Claude Max'
+      return 'Momo Max'
     case 'pro':
-      return 'Claude Pro'
+      return 'Momo Pro'
     default:
-      return 'Claude API'
+      return 'Momo API'
   }
 }
 
@@ -1846,7 +1846,7 @@ function isConsumerPlan(plan: SubscriptionType): plan is 'max' | 'pro' {
 export function isConsumerSubscriber(): boolean {
   const subscriptionType = getSubscriptionType()
   return (
-    isClaudeAISubscriber() &&
+    isMomoAISubscriber() &&
     subscriptionType !== null &&
     isConsumerPlan(subscriptionType)
   )
@@ -1873,7 +1873,7 @@ export function getAccountInformation() {
     authTokenSource === 'CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR'
   ) {
     accountInfo.tokenSource = authTokenSource
-  } else if (isClaudeAISubscriber()) {
+  } else if (isMomoAISubscriber()) {
     accountInfo.subscription = getSubscriptionName()
   } else {
     accountInfo.tokenSource = authTokenSource
@@ -1921,7 +1921,7 @@ export type OrgValidationResult =
  * token's org (network error, missing profile data), validation fails.
  */
 export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
-  // `claude ssh` remote: real auth lives on the local machine and is injected
+  // `momo ssh` remote: real auth lives on the local machine and is injected
   // by the proxy. The placeholder token can't be validated against the profile
   // endpoint. The local side already ran this check before establishing the session.
   if (process.env.ANTHROPIC_UNIX_SOCKET) {
@@ -1942,7 +1942,7 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
   // No-op for env-var tokens (refreshToken is null).
   await checkAndRefreshOAuthTokenIfNeeded()
 
-  const tokens = getClaudeAIOAuthTokens()
+  const tokens = getMomoAIOAuthTokens()
   if (!tokens) {
     return { valid: true }
   }
@@ -1964,8 +1964,8 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
         `Unable to verify organization for the current authentication token.\n` +
         `This machine requires organization ${requiredOrgUuid} but the profile could not be fetched.\n` +
         `This may be a network error, or the token may lack the user:profile scope required for\n` +
-        `verification (tokens from 'claude setup-token' do not include this scope).\n` +
-        `Try again, or obtain a full-scope token via 'claude auth login'.`,
+        `verification (tokens from 'momo setup-token' do not include this scope).\n` +
+        `Try again, or obtain a full-scope token via 'momo auth login'.`,
     }
   }
 
@@ -1995,7 +1995,7 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
     message:
       `Your authentication token belongs to organization ${tokenOrgUuid},\n` +
       `but this machine requires organization ${requiredOrgUuid}.\n\n` +
-      `Please log in with the correct organization: claude auth login`,
+      `Please log in with the correct organization: momo auth login`,
   }
 }
 

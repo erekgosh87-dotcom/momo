@@ -6,11 +6,11 @@ import axios from 'axios'
 import { OAUTH_BETA_HEADER } from '../constants/oauth.js'
 import {
   getAnthropicApiKey,
-  getClaudeAIOAuthTokens,
+  getMomoAIOAuthTokens,
   handleOAuth401Error,
-  isClaudeAISubscriber,
+  isMomoAISubscriber,
 } from './auth.js'
-import { getClaudeCodeUserAgent } from './userAgent.js'
+import { getMomoCodeUserAgent } from './userAgent.js'
 import { getWorkload } from './workloadContext.js'
 
 // WARNING: We rely on `claude-cli` in the user agent for log filtering.
@@ -49,12 +49,12 @@ export function getMCPUserAgent(): string {
   return `claude-code/${MACRO.VERSION}${suffix}`
 }
 
-// User-Agent for WebFetch requests to arbitrary sites. `Claude-User` is
+// User-Agent for WebFetch requests to arbitrary sites. `Momo-User` is
 // Anthropic's publicly documented agent for user-initiated fetches (what site
 // operators match in robots.txt); the claude-code suffix lets them distinguish
 // local CLI traffic from claude.ai server-side fetches.
 export function getWebFetchUserAgent(): string {
-  return `Claude-User (${getClaudeCodeUserAgent()}; +https://support.anthropic.com/)`
+  return `Momo-User (${getMomoCodeUserAgent()}; +https://support.anthropic.com/)`
 }
 
 export type AuthHeaders = {
@@ -67,8 +67,8 @@ export type AuthHeaders = {
  * Returns either OAuth headers for Max/Pro users or API key headers for regular users
  */
 export function getAuthHeaders(): AuthHeaders {
-  if (isClaudeAISubscriber()) {
-    const oauthTokens = getClaudeAIOAuthTokens()
+  if (isMomoAISubscriber()) {
+    const oauthTokens = getMomoAIOAuthTokens()
     if (!oauthTokens?.accessToken) {
       return {
         headers: {},
@@ -128,7 +128,7 @@ export async function withOAuth401Retry<T>(
         typeof err.response?.data === 'string' &&
         err.response.data.includes('OAuth token has been revoked'))
     if (!isAuthError) throw err
-    const failedAccessToken = getClaudeAIOAuthTokens()?.accessToken
+    const failedAccessToken = getMomoAIOAuthTokens()?.accessToken
     if (!failedAccessToken) throw err
     await handleOAuth401Error(failedAccessToken)
     return await request()

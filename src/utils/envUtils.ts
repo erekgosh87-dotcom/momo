@@ -4,7 +4,7 @@ import { join } from 'path'
 
 // Memoized: 150+ callers, many on hot paths. Keyed off CLAUDE_CONFIG_DIR so
 // tests that change the env var get a fresh value without explicit cache.clear.
-export const getClaudeConfigHomeDir = memoize(
+export const getMomoConfigHomeDir = memoize(
   (): string => {
     return (
       process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude')
@@ -14,7 +14,7 @@ export const getClaudeConfigHomeDir = memoize(
 )
 
 export function getTeamsDir(): string {
-  return join(getClaudeConfigHomeDir(), 'teams')
+  return join(getMomoConfigHomeDir(), 'teams')
 }
 
 /**
@@ -123,7 +123,7 @@ export function isRunningOnHomespace(): boolean {
 }
 
 /**
- * Conservative check for whether Claude Code is running inside a protected
+ * Conservative check for whether Momo Code is running inside a protected
  * (privileged or ASL3+) COO namespace or cluster.
  *
  * Conservative means: when signals are ambiguous, assume protected. We would

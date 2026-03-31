@@ -8,13 +8,13 @@ import {
   logEvent,
 } from '../../services/analytics/index.js'
 import { initializeAnalyticsSink } from '../../services/analytics/sink.js'
-import { getClaudeAIOAuthTokens } from '../auth.js'
+import { getMomoAIOAuthTokens } from '../auth.js'
 import { enableConfigs, getGlobalConfig, saveGlobalConfig } from '../config.js'
 import { logForDebugging } from '../debug.js'
 import { isEnvTruthy } from '../envUtils.js'
 import { sideQuery } from '../sideQuery.js'
 import { getAllSocketPaths, getSecureSocketPath } from './common.js'
-import { importClaudeForChromePackage } from './package.js'
+import { importMomoForChromePackage } from './package.js'
 
 const EXTENSION_DOWNLOAD_URL = 'https://claude.ai/chrome'
 const BUG_REPORT_URL =
@@ -76,7 +76,7 @@ function isLocalBridge(): boolean {
 }
 
 /**
- * Build the ClaudeForChromeContext used by both the subprocess MCP server
+ * Build the MomoForChromeContext used by both the subprocess MCP server
  * and the in-process path in the MCP client.
  */
 export function createChromeContext(
@@ -99,18 +99,18 @@ export function createChromeContext(
     }
   }
   return {
-    serverName: 'Claude in Chrome',
+    serverName: 'Momo in Chrome',
     logger,
     socketPath: getSecureSocketPath(),
     getSocketPaths: getAllSocketPaths,
     clientTypeId: 'claude-code',
     onAuthenticationError: () => {
       logger.warn(
-        'Authentication error occurred. Please ensure you are logged into the Claude browser extension with the same claude.ai account as Claude Code.',
+        'Authentication error occurred. Please ensure you are logged into the Momo browser extension with the same claude.ai account as Momo Code.',
       )
     },
     onToolCallDisconnected: () => {
-      return `Browser extension is not connected. Please ensure the Claude browser extension is installed and running (${EXTENSION_DOWNLOAD_URL}), and that you are logged into claude.ai with the same account as Claude Code. If this is your first time connecting to Chrome, you may need to restart Chrome for the installation to take effect. If you continue to experience issues, please report a bug: ${BUG_REPORT_URL}`
+      return `Browser extension is not connected. Please ensure the Momo browser extension is installed and running (${EXTENSION_DOWNLOAD_URL}), and that you are logged into claude.ai with the same account as Momo Code. If this is your first time connecting to Chrome, you may need to restart Chrome for the installation to take effect. If you continue to experience issues, please report a bug: ${BUG_REPORT_URL}`
     },
     onExtensionPaired: (deviceId: string, name: string) => {
       saveGlobalConfig(config => {
@@ -140,7 +140,7 @@ export function createChromeContext(
           return getGlobalConfig().oauthAccount?.accountUuid
         },
         getOAuthToken: async () => {
-          return getClaudeAIOAuthTokens()?.accessToken ?? ''
+          return getMomoAIOAuthTokens()?.accessToken ?? ''
         },
         ...(isLocalBridge() && { devUserId: 'dev_user_local' }),
       },
@@ -160,7 +160,7 @@ export function createChromeContext(
     // Types inlined: AnthropicMessagesRequest/Response live in
     // @ant/claude-for-chrome-mcp@0.4.0 which isn't published yet. CI installs
     // 0.3.0. The callAnthropicMessages field is also 0.4.0-only, but spreading
-    // an extra property into ClaudeForChromeContext is fine against either
+    // an extra property into MomoForChromeContext is fine against either
     // version — 0.3.0 sees an unknown field (allowed in spread), 0.4.0 sees a
     // structurally-matching one. Once 0.4.0 is published, this can switch to
     // the package's exported types and the dep can be bumped.
@@ -242,13 +242,13 @@ export function createChromeContext(
   }
 }
 
-export async function runClaudeInChromeMcpServer(): Promise<void> {
+export async function runMomoInChromeMcpServer(): Promise<void> {
   enableConfigs()
   initializeAnalyticsSink()
   const context = createChromeContext()
-  const { createClaudeForChromeMcpServer } = await importClaudeForChromePackage()
+  const { createMomoForChromeMcpServer } = await importMomoForChromePackage()
 
-  const server = createClaudeForChromeMcpServer(context)
+  const server = createMomoForChromeMcpServer(context)
   const transport = new StdioServerTransport()
 
   // Exit when parent process dies (stdin pipe closes).
@@ -267,9 +267,9 @@ export async function runClaudeInChromeMcpServer(): Promise<void> {
   process.stdin.on('end', () => void shutdownAndExit())
   process.stdin.on('error', () => void shutdownAndExit())
 
-  logForDebugging('[Claude in Chrome] Starting MCP server')
+  logForDebugging('[Momo in Chrome] Starting MCP server')
   await server.connect(transport)
-  logForDebugging('[Claude in Chrome] MCP server started')
+  logForDebugging('[Momo in Chrome] MCP server started')
 }
 
 class DebugLogger {

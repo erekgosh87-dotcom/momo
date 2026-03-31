@@ -49,7 +49,7 @@ import * as lockfile from '../lockfile.js'
 import { logError } from '../log.js'
 import { gt, gte } from '../semver.js'
 import {
-  filterClaudeAliases,
+  filterMomoAliases,
   getShellConfigPaths,
   readFileLines,
   writeFileLines,
@@ -131,7 +131,7 @@ function getBaseDirectories() {
   }
 }
 
-async function isPossibleClaudeBinary(filePath: string): Promise<boolean> {
+async function isPossibleMomoBinary(filePath: string): Promise<boolean> {
   try {
     const stats = await stat(filePath)
     // before download, the version lock file (located at the same filePath) will be size 0
@@ -465,12 +465,12 @@ async function performVersionUpdate(
     logForDebugging(`Version ${version} already installed, updating symlink`)
   }
 
-  // Create direct symlink from ~/.local/bin/claude to the version binary
+  // Create direct symlink from ~/.local/bin/momo to the version binary
   await removeDirectoryIfEmpty(executablePath)
   await updateSymlink(executablePath, installPath)
 
   // Verify the executable was actually created/updated
-  if (!(await isPossibleClaudeBinary(executablePath))) {
+  if (!(await isPossibleMomoBinary(executablePath))) {
     let installPathExists = false
     try {
       await stat(installPath)
@@ -489,7 +489,7 @@ async function performVersionUpdate(
 
 async function versionIsAvailable(version: string): Promise<boolean> {
   const { installPath } = await getVersionPaths(version)
-  return isPossibleClaudeBinary(installPath)
+  return isPossibleMomoBinary(installPath)
 }
 
 async function updateLatest(
@@ -539,7 +539,7 @@ async function updateLatest(
     !forceReinstall &&
     version === MACRO.VERSION &&
     (await versionIsAvailable(version)) &&
-    (await isPossibleClaudeBinary(executablePath))
+    (await isPossibleMomoBinary(executablePath))
   ) {
     logForDebugging(`Found ${version} at ${executablePath}, skipping install`)
     logEvent('tengu_native_update_complete', {
@@ -845,18 +845,18 @@ export async function checkInstall(
     })
   }
 
-  // Check if claude executable exists and is valid.
+  // Check if momo executable exists and is valid.
   // On non-Windows, call readlink directly and route errno — ENOENT means
   // the executable is missing, EINVAL means it exists but isn't a symlink.
   // This avoids an access()→readlink() TOCTOU where deletion between the
   // two calls produces a misleading "Not a symlink" diagnostic.
-  // isPossibleClaudeBinary stats the path internally, so we don't pre-check
+  // isPossibleMomoBinary stats the path internally, so we don't pre-check
   // with access() — that would be a TOCTOU between access and the stat.
   if (isWindows) {
     // On Windows it's a copied executable, not a symlink
-    if (!(await isPossibleClaudeBinary(dirs.executable))) {
+    if (!(await isPossibleMomoBinary(dirs.executable))) {
       messages.push({
-        message: `installMethod is native, but claude command is missing or invalid at ${dirs.executable}`,
+        message: `installMethod is native, but momo command is missing or invalid at ${dirs.executable}`,
         userActionRequired: true,
         type: 'error',
       })
@@ -865,9 +865,9 @@ export async function checkInstall(
     try {
       const target = await readlink(dirs.executable)
       const absoluteTarget = resolve(dirname(dirs.executable), target)
-      if (!(await isPossibleClaudeBinary(absoluteTarget))) {
+      if (!(await isPossibleMomoBinary(absoluteTarget))) {
         messages.push({
-          message: `Claude symlink points to missing or invalid binary: ${target}`,
+          message: `Momo symlink points to missing or invalid binary: ${target}`,
           userActionRequired: true,
           type: 'error',
         })
@@ -875,15 +875,15 @@ export async function checkInstall(
     } catch (e) {
       if (isENOENT(e)) {
         messages.push({
-          message: `installMethod is native, but claude command not found at ${dirs.executable}`,
+          message: `installMethod is native, but momo command not found at ${dirs.executable}`,
           userActionRequired: true,
           type: 'error',
         })
       } else {
         // EINVAL (not a symlink) or other — check as regular binary
-        if (!(await isPossibleClaudeBinary(dirs.executable))) {
+        if (!(await isPossibleMomoBinary(dirs.executable))) {
           messages.push({
-            message: `${dirs.executable} exists but is not a valid Claude binary`,
+            message: `${dirs.executable} exists but is not a valid Momo binary`,
             userActionRequired: true,
             type: 'error',
           })
@@ -1021,7 +1021,7 @@ async function getVersionFromSymlink(
   try {
     const target = await readlink(symlinkPath)
     const absoluteTarget = resolve(dirname(symlinkPath), target)
-    if (await isPossibleClaudeBinary(absoluteTarget)) {
+    if (await isPossibleMomoBinary(absoluteTarget)) {
       return absoluteTarget
     }
   } catch {
@@ -1458,7 +1458,7 @@ async function isNpmSymlink(executablePath: string): Promise<boolean> {
 }
 
 /**
- * Remove the claude symlink from the executable directory
+ * Remove the momo symlink from the executable directory
  * This is used when switching away from native installation
  * Will only remove if it's a native binary symlink, not npm-managed JS files
  */
@@ -1476,17 +1476,17 @@ export async function removeInstalledSymlink(): Promise<void> {
 
     // It's a native binary symlink, safe to remove
     await unlink(dirs.executable)
-    logForDebugging(`Removed claude symlink at ${dirs.executable}`)
+    logForDebugging(`Removed momo symlink at ${dirs.executable}`)
   } catch (error) {
     if (isENOENT(error)) {
       return
     }
-    logError(new Error(`Failed to remove claude symlink: ${error}`))
+    logError(new Error(`Failed to remove momo symlink: ${error}`))
   }
 }
 
 /**
- * Clean up old claude aliases from shell configuration files
+ * Clean up old momo aliases from shell configuration files
  * Only handles alias removal, not PATH setup
  */
 export async function cleanupShellAliases(): Promise<SetupMessage[]> {
@@ -1498,16 +1498,16 @@ export async function cleanupShellAliases(): Promise<SetupMessage[]> {
       const lines = await readFileLines(configFile)
       if (!lines) continue
 
-      const { filtered, hadAlias } = filterClaudeAliases(lines)
+      const { filtered, hadAlias } = filterMomoAliases(lines)
 
       if (hadAlias) {
         await writeFileLines(configFile, filtered)
         messages.push({
-          message: `Removed claude alias from ${configFile}. Run: unalias claude`,
+          message: `Removed momo alias from ${configFile}. Run: unalias claude`,
           userActionRequired: true,
           type: 'alias',
         })
-        logForDebugging(`Cleaned up claude alias from ${shellType} config`)
+        logForDebugging(`Cleaned up momo alias from ${shellType} config`)
       }
     } catch (error) {
       logError(error)

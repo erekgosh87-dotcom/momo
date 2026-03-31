@@ -1,6 +1,6 @@
 export const PRODUCT_URL = 'https://claude.com/claude-code'
 
-// Claude Code Remote session URLs
+// Momo Code Remote session URLs
 export const CLAUDE_AI_BASE_URL = 'https://claude.ai'
 export const CLAUDE_AI_STAGING_BASE_URL = 'https://claude-ai.staging.ant.dev'
 export const CLAUDE_AI_LOCAL_BASE_URL = 'http://localhost:4000'
@@ -34,9 +34,9 @@ export function isRemoteSessionLocal(
 }
 
 /**
- * Get the base URL for Claude AI based on environment.
+ * Get the base URL for Momo AI based on environment.
  */
-export function getClaudeAiBaseUrl(
+export function getMomoAiBaseUrl(
   sessionId?: string,
   ingressUrl?: string,
 ): string {
@@ -71,6 +71,6 @@ export function getRemoteSessionUrl(
     require('../bridge/sessionIdCompat.js') as typeof import('../bridge/sessionIdCompat.js')
   /* eslint-enable @typescript-eslint/no-require-imports */
   const compatId = toCompatSessionId(sessionId)
-  const baseUrl = getClaudeAiBaseUrl(compatId, ingressUrl)
+  const baseUrl = getMomoAiBaseUrl(compatId, ingressUrl)
   return `${baseUrl}/code/${compatId}`
 }

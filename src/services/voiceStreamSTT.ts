@@ -3,7 +3,7 @@
 // Only reachable in ant builds (gated by feature('VOICE_MODE') in useVoice.ts import).
 //
 // Connects to Anthropic's voice_stream WebSocket endpoint using the same
-// OAuth credentials as Claude Code.  The endpoint uses conversation_engine
+// OAuth credentials as Momo Code.  The endpoint uses conversation_engine
 // backed models for speech-to-text.  Designed for hold-to-talk: hold the
 // keybinding to record, release to stop and submit.
 //
@@ -16,7 +16,7 @@ import WebSocket from 'ws'
 import { getOauthConfig } from '../constants/oauth.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
-  getClaudeAIOAuthTokens,
+  getMomoAIOAuthTokens,
   isAnthropicAuthEnabled,
 } from '../utils/auth.js'
 import { logForDebugging } from '../utils/debug.js'
@@ -96,13 +96,13 @@ type VoiceStreamMessage =
 // ─── Availability ──────────────────────────────────────────────────────
 
 export function isVoiceStreamAvailable(): boolean {
-  // voice_stream uses the same OAuth as Claude Code — available when the
-  // user is authenticated with Anthropic (Claude.ai subscriber or has
+  // voice_stream uses the same OAuth as Momo Code — available when the
+  // user is authenticated with Anthropic (Momo.ai subscriber or has
   // valid OAuth tokens).
   if (!isAnthropicAuthEnabled()) {
     return false
   }
-  const tokens = getClaudeAIOAuthTokens()
+  const tokens = getMomoAIOAuthTokens()
   return tokens !== null && tokens.accessToken !== null
 }
 
@@ -115,7 +115,7 @@ export async function connectVoiceStream(
   // Ensure OAuth token is fresh before connecting
   await checkAndRefreshOAuthTokenIfNeeded()
 
-  const tokens = getClaudeAIOAuthTokens()
+  const tokens = getMomoAIOAuthTokens()
   if (!tokens?.accessToken) {
     logForDebugging('[voice_stream] No OAuth token available')
     return null

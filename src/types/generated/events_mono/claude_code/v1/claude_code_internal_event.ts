@@ -61,9 +61,9 @@ export interface EnvironmentMetadata {
 }
 
 /**
- * SlackContext contains context fields present on every Claude-in-Slack (CIS) event.
+ * SlackContext contains context fields present on every Momo-in-Slack (CIS) event.
  * Event-specific fields (errorType, durationMs, httpStatus, etc.) go in
- * ClaudeCodeInternalEvent.additional_metadata as JSON.
+ * MomoCodeInternalEvent.additional_metadata as JSON.
  */
 export interface SlackContext {
   slack_team_id?: string | undefined
@@ -73,11 +73,11 @@ export interface SlackContext {
 }
 
 /**
- * ClaudeCodeInternalEvent represents events logged from Claude Code via Statsig
+ * MomoCodeInternalEvent represents events logged from Momo Code via Statsig
  * This schema matches the structure in claude-cli-internal/src/services/statsig.ts
  * Source table: proj-product-data-nhme.raw_statsig_internal_tools.events
  */
-export interface ClaudeCodeInternalEvent {
+export interface MomoCodeInternalEvent {
   /** Event name (e.g., "tengu_binary_feedback", "tengu_api_success") */
   event_name?: string | undefined
   /** Event timestamp */
@@ -121,7 +121,7 @@ export interface ClaudeCodeInternalEvent {
   agent_id?: string | undefined
   parent_session_id?: string | undefined
   agent_type?: string | undefined
-  /** Claude-in-Slack context (only present for cis_* events) */
+  /** Momo-in-Slack context (only present for cis_* events) */
   slack?: SlackContext | undefined
   team_name?: string | undefined
   skill_name?: string | undefined
@@ -549,7 +549,7 @@ export const SlackContext: MessageFns<SlackContext> = {
   },
 }
 
-function createBaseClaudeCodeInternalEvent(): ClaudeCodeInternalEvent {
+function createBaseMomoCodeInternalEvent(): MomoCodeInternalEvent {
   return {
     event_name: '',
     client_timestamp: undefined,
@@ -583,8 +583,8 @@ function createBaseClaudeCodeInternalEvent(): ClaudeCodeInternalEvent {
   }
 }
 
-export const ClaudeCodeInternalEvent: MessageFns<ClaudeCodeInternalEvent> = {
-  fromJSON(object: any): ClaudeCodeInternalEvent {
+export const MomoCodeInternalEvent: MessageFns<MomoCodeInternalEvent> = {
+  fromJSON(object: any): MomoCodeInternalEvent {
     return {
       event_name: isSet(object.event_name)
         ? globalThis.String(object.event_name)
@@ -668,7 +668,7 @@ export const ClaudeCodeInternalEvent: MessageFns<ClaudeCodeInternalEvent> = {
     }
   },
 
-  toJSON(message: ClaudeCodeInternalEvent): unknown {
+  toJSON(message: MomoCodeInternalEvent): unknown {
     const obj: any = {}
     if (message.event_name !== undefined) {
       obj.event_name = message.event_name
@@ -760,15 +760,15 @@ export const ClaudeCodeInternalEvent: MessageFns<ClaudeCodeInternalEvent> = {
     return obj
   },
 
-  create<I extends Exact<DeepPartial<ClaudeCodeInternalEvent>, I>>(
+  create<I extends Exact<DeepPartial<MomoCodeInternalEvent>, I>>(
     base?: I,
-  ): ClaudeCodeInternalEvent {
-    return ClaudeCodeInternalEvent.fromPartial(base ?? ({} as any))
+  ): MomoCodeInternalEvent {
+    return MomoCodeInternalEvent.fromPartial(base ?? ({} as any))
   },
-  fromPartial<I extends Exact<DeepPartial<ClaudeCodeInternalEvent>, I>>(
+  fromPartial<I extends Exact<DeepPartial<MomoCodeInternalEvent>, I>>(
     object: I,
-  ): ClaudeCodeInternalEvent {
-    const message = createBaseClaudeCodeInternalEvent()
+  ): MomoCodeInternalEvent {
+    const message = createBaseMomoCodeInternalEvent()
     message.event_name = object.event_name ?? ''
     message.client_timestamp = object.client_timestamp ?? undefined
     message.model = object.model ?? ''

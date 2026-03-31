@@ -3,7 +3,7 @@
  *
  * Registers the `claude-cli://` custom URI scheme with the OS,
  * so that clicking a `claude-cli://` link in a browser (or any app) will
- * invoke `claude --handle-uri <url>`.
+ * invoke `momo --handle-uri <url>`.
  *
  * Platform details:
  *   macOS  — Creates a minimal .app trampoline in ~/Applications with
@@ -22,7 +22,7 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { logForDebugging } from '../debug.js'
-import { getClaudeConfigHomeDir } from '../envUtils.js'
+import { getMomoConfigHomeDir } from '../envUtils.js'
 import { getErrnoCode } from '../errors.js'
 import { execFileNoThrow } from '../execFileNoThrow.js'
 import { getInitialSettings } from '../settings/settings.js'
@@ -31,9 +31,9 @@ import { getUserBinDir, getXDGDataHome } from '../xdg.js'
 import { DEEP_LINK_PROTOCOL } from './parseDeepLink.js'
 
 export const MACOS_BUNDLE_ID = 'com.anthropic.claude-code-url-handler'
-const APP_NAME = 'Claude Code URL Handler'
+const APP_NAME = 'Momo Code URL Handler'
 const DESKTOP_FILE_NAME = 'claude-code-url-handler.desktop'
-const MACOS_APP_NAME = 'Claude Code URL Handler.app'
+const MACOS_APP_NAME = 'Momo Code URL Handler.app'
 
 // Shared between register* (writes these paths/values) and
 // isProtocolHandlerCurrent (reads them back). Keep the writer and reader
@@ -66,7 +66,7 @@ function windowsCommandValue(claudePath: string): string {
  * Creates a .app bundle where the CFBundleExecutable is a symlink to the
  * already-installed (and signed) `claude` binary. When macOS opens a
  * `claude-cli://` URL, it launches `claude` through this app bundle.
- * Claude then uses the url-handler NAPI module to read the URL from the
+ * Momo then uses the url-handler NAPI module to read the URL from the
  * Apple Event and handles it normally.
  *
  * This approach avoids shipping a separate executable (which would need
@@ -87,7 +87,7 @@ async function registerMacos(claudePath: string): Promise<void> {
 
   await fs.mkdir(path.dirname(MACOS_SYMLINK_PATH), { recursive: true })
 
-  // Info.plist — registers the URL scheme with claude as the executable
+  // Info.plist — registers the URL scheme with momo as the executable
   const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -108,7 +108,7 @@ async function registerMacos(claudePath: string): Promise<void> {
   <array>
     <dict>
       <key>CFBundleURLName</key>
-      <string>Claude Code Deep Link</string>
+      <string>Momo Code Deep Link</string>
       <key>CFBundleURLSchemes</key>
       <array>
         <string>${DEEP_LINK_PROTOCOL}</string>
@@ -120,7 +120,7 @@ async function registerMacos(claudePath: string): Promise<void> {
 
   await fs.writeFile(path.join(contentsDir, 'Info.plist'), infoPlist)
 
-  // Symlink to the already-signed claude binary — avoids a new executable
+  // Symlink to the already-signed momo binary — avoids a new executable
   // that would need signing and endpoint-security allowlisting.
   // Written LAST among the throwing fs calls: isProtocolHandlerCurrent reads
   // this symlink, so it acts as the commit marker. If Info.plist write
@@ -146,7 +146,7 @@ async function registerLinux(claudePath: string): Promise<void> {
 
   const desktopEntry = `[Desktop Entry]
 Name=${APP_NAME}
-Comment=Handle ${DEEP_LINK_PROTOCOL}:// deep links for Claude Code
+Comment=Handle ${DEEP_LINK_PROTOCOL}:// deep links for Momo Code
 ${linuxExecLine(claudePath)}
 Type=Application
 NoDisplay=true
@@ -215,7 +215,7 @@ async function registerWindows(claudePath: string): Promise<void> {
 export async function registerProtocolHandler(
   claudePath?: string,
 ): Promise<void> {
-  const resolved = claudePath ?? (await resolveClaudePath())
+  const resolved = claudePath ?? (await resolveMomoPath())
 
   switch (process.platform) {
     case 'darwin':
@@ -233,12 +233,12 @@ export async function registerProtocolHandler(
 }
 
 /**
- * Resolve the claude binary path for protocol registration. Prefers the
+ * Resolve the momo binary path for protocol registration. Prefers the
  * native installer's stable symlink (~/.local/bin/claude) which survives
  * auto-updates; falls back to process.execPath when the symlink is absent
  * (dev builds, non-native installs).
  */
-async function resolveClaudePath(): Promise<string> {
+async function resolveMomoPath(): Promise<string> {
   const binaryName = process.platform === 'win32' ? 'claude.exe' : 'claude'
   const stablePath = path.join(getUserBinDir(), binaryName)
   try {
@@ -303,7 +303,7 @@ export async function ensureDeepLinkProtocolRegistered(): Promise<void> {
     return
   }
 
-  const claudePath = await resolveClaudePath()
+  const claudePath = await resolveMomoPath()
   if (await isProtocolHandlerCurrent(claudePath)) {
     return
   }
@@ -311,9 +311,9 @@ export async function ensureDeepLinkProtocolRegistered(): Promise<void> {
   // EACCES/ENOSPC are deterministic — retrying next session won't help.
   // Throttle to once per 24h so a read-only ~/.local/share/applications
   // doesn't generate a failure event on every startup. Marker lives in
-  // ~/.claude (per-machine, not synced) rather than ~/.claude.json (can sync).
+  // ~/.momo (per-machine, not synced) rather than ~/.claude.json (can sync).
   const failureMarkerPath = path.join(
-    getClaudeConfigHomeDir(),
+    getMomoConfigHomeDir(),
     '.deep-link-register-failed',
   )
   try {

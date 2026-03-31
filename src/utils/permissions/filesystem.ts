@@ -17,7 +17,7 @@ import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from '../../services/anal
 import type { AnyObject, Tool, ToolPermissionContext } from '../../Tool.js'
 import { FILE_READ_TOOL_NAME } from '../../tools/FileReadTool/prompt.js'
 import { getCwd } from '../cwd.js'
-import { getClaudeConfigHomeDir } from '../envUtils.js'
+import { getMomoConfigHomeDir } from '../envUtils.js'
 import {
   getFsImplementation,
   getPathsForPermissionCheck,
@@ -98,7 +98,7 @@ export function normalizeCaseForComparison(path: string): string {
  * permission dialog and SDK suggestions, so iterating on one skill doesn't
  * require granting session access to all of .claude/ (settings.json, hooks/, etc.).
  */
-export function getClaudeSkillScope(
+export function getMomoSkillScope(
   filePath: string,
 ): { skillName: string; pattern: string } | null {
   const absolutePath = expandPath(filePath)
@@ -197,7 +197,7 @@ function getSettingsPaths(): string[] {
   ).filter(path => path !== undefined)
 }
 
-export function isClaudeSettingsPath(filePath: string): boolean {
+export function isMomoSettingsPath(filePath: string): boolean {
   // SECURITY: Normalize path structure first to prevent bypass via redundant ./
   // sequences like `./.claude/./settings.json` which would evade the endsWith() check
   const expandedPath = expandPath(filePath)
@@ -221,9 +221,9 @@ export function isClaudeSettingsPath(filePath: string): boolean {
   )
 }
 
-// Always ask when Claude Code tries to edit its own config files
-function isClaudeConfigFilePath(filePath: string): boolean {
-  if (isClaudeSettingsPath(filePath)) {
+// Always ask when Momo Code tries to edit its own config files
+function isMomoConfigFilePath(filePath: string): boolean {
+  if (isMomoSettingsPath(filePath)) {
     return true
   }
 
@@ -292,7 +292,7 @@ function isProjectDirPath(absolutePath: string): boolean {
 
 /**
  * Checks if the scratchpad directory feature is enabled.
- * The scratchpad is a per-session directory for Claude to write temporary files.
+ * The scratchpad is a per-session directory for Momo to write temporary files.
  * Controlled by the tengu_scratch Statsig gate.
  */
 export function isScratchpadEnabled(): boolean {
@@ -300,11 +300,11 @@ export function isScratchpadEnabled(): boolean {
 }
 
 /**
- * Returns the user-specific Claude temp directory name.
+ * Returns the user-specific Momo temp directory name.
  * On Unix: 'claude-{uid}' to prevent multi-user permission conflicts
  * On Windows: 'claude' (tmpdir() is already per-user)
  */
-export function getClaudeTempDirName(): string {
+export function getMomoTempDirName(): string {
   if (getPlatform() === 'windows') {
     return 'claude'
   }
@@ -315,11 +315,11 @@ export function getClaudeTempDirName(): string {
 }
 
 /**
- * Returns the Claude temp directory path with symlinks resolved.
+ * Returns the Momo temp directory path with symlinks resolved.
  * Uses TMPDIR env var if set, otherwise:
  * - On Unix: /tmp/claude-{uid}/ (resolved to /private/tmp/claude-{uid}/ on macOS)
  * - On Windows: {tmpdir}/claude/ (e.g., C:\Users\{user}\AppData\Local\Temp\claude\)
- * This is a per-user temporary directory used by Claude Code for all temp files.
+ * This is a per-user temporary directory used by Momo Code for all temp files.
  *
  * NOTE: We resolve symlinks to ensure this path matches the resolved paths used
  * in permission checks. On macOS, /tmp is a symlink to /private/tmp, so without
@@ -328,7 +328,7 @@ export function getClaudeTempDirName(): string {
 // Memoized: called per-tool from permission checks (yoloClassifier, sandbox-adapter)
 // and per-turn from BashTool prompt. Inputs (CLAUDE_CODE_TMPDIR env + platform) are
 // fixed at startup, and the realpath of the system tmp dir does not change mid-session.
-export const getClaudeTempDir = memoize(function getClaudeTempDir(): string {
+export const getMomoTempDir = memoize(function getMomoTempDir(): string {
   const baseTmpDir =
     process.env.CLAUDE_CODE_TMPDIR ||
     (getPlatform() === 'windows' ? tmpdir() : '/tmp')
@@ -343,7 +343,7 @@ export const getClaudeTempDir = memoize(function getClaudeTempDir(): string {
     // If resolution fails, use the original path
   }
 
-  return join(resolvedBaseTmpDir, getClaudeTempDirName()) + sep
+  return join(resolvedBaseTmpDir, getMomoTempDirName()) + sep
 })
 
 /**
@@ -365,7 +365,7 @@ export const getClaudeTempDir = memoize(function getClaudeTempDir(): string {
 export const getBundledSkillsRoot = memoize(
   function getBundledSkillsRoot(): string {
     const nonce = randomBytes(16).toString('hex')
-    return join(getClaudeTempDir(), 'bundled-skills', MACRO.VERSION, nonce)
+    return join(getMomoTempDir(), 'bundled-skills', MACRO.VERSION, nonce)
   },
 )
 
@@ -374,7 +374,7 @@ export const getBundledSkillsRoot = memoize(
  * Path format: /tmp/claude-{uid}/{sanitized-cwd}/
  */
 export function getProjectTempDir(): string {
-  return join(getClaudeTempDir(), sanitizePath(getOriginalCwd())) + sep
+  return join(getMomoTempDir(), sanitizePath(getOriginalCwd())) + sep
 }
 
 /**
@@ -453,9 +453,9 @@ function isDangerousFilePathToAutoEdit(path: string): boolean {
         continue
       }
 
-      // Special case: .claude/worktrees/ is a structural path (where Claude stores
+      // Special case: .claude/worktrees/ is a structural path (where Momo stores
       // git worktrees), not a user-created dangerous directory. Skip the .claude
-      // segment when it's followed by 'worktrees'. Any nested .claude directories
+      // segment when it's followed by 'worktrees'. Any nested .momo directories
       // within the worktree (not followed by 'worktrees') are still blocked.
       if (dir === '.claude') {
         const nextSegment = pathSegments[i + 1]
@@ -493,7 +493,7 @@ function isDangerousFilePathToAutoEdit(path: string): boolean {
  * - NTFS Alternate Data Streams (e.g., file.txt::$DATA or file.txt:stream)
  * - 8.3 short names (e.g., GIT~1, CLAUDE~1, SETTIN~1.JSON)
  * - Long path prefixes (e.g., \\?\C:\..., \\.\C:\..., //?/C:/..., //./C:/...)
- * - Trailing dots and spaces (e.g., .git., .claude , .bashrc...)
+ * - Trailing dots and spaces (e.g., .git., .momo , .bashrc...)
  * - DOS device names (e.g., .git.CON, settings.json.PRN, .bashrc.AUX)
  * - Three or more consecutive dots (e.g., .../file.txt, path/.../file, file...txt)
  *
@@ -569,7 +569,7 @@ function hasSuspiciousWindowsPathPattern(path: string): boolean {
   }
 
   // Check for trailing dots and spaces that Windows strips during path resolution
-  // Examples: .git., .claude , .bashrc..., settings.json.
+  // Examples: .git., .momo , .bashrc..., settings.json.
   // This can bypass string matching if ".git" is blocked but ".git." is used
   if (/[.\s]+$/.test(path)) {
     return true
@@ -607,8 +607,8 @@ function hasSuspiciousWindowsPathPattern(path: string): boolean {
  *
  * This function performs comprehensive safety checks including:
  * - Suspicious Windows path patterns (NTFS streams, 8.3 names, long path prefixes, etc.)
- * - Claude config files (.claude/settings.json, .claude/commands/, .claude/agents/)
- * - MCP CLI state files (managed internally by Claude Code)
+ * - Momo config files (.claude/settings.json, .claude/commands/, .claude/agents/)
+ * - MCP CLI state files (managed internally by Momo Code)
  * - Dangerous files (.bashrc, .gitconfig, .git/, .vscode/, .idea/, etc.)
  *
  * IMPORTANT: This function checks BOTH the original path AND resolved symlink paths
@@ -632,18 +632,18 @@ export function checkPathSafetyForAutoEdit(
     if (hasSuspiciousWindowsPathPattern(pathToCheck)) {
       return {
         safe: false,
-        message: `Claude requested permissions to write to ${path}, which contains a suspicious Windows path pattern that requires manual approval.`,
+        message: `Momo requested permissions to write to ${path}, which contains a suspicious Windows path pattern that requires manual approval.`,
         classifierApprovable: false,
       }
     }
   }
 
-  // Check for Claude config files on all paths
+  // Check for Momo config files on all paths
   for (const pathToCheck of pathsToCheck) {
-    if (isClaudeConfigFilePath(pathToCheck)) {
+    if (isMomoConfigFilePath(pathToCheck)) {
       return {
         safe: false,
-        message: `Claude requested permissions to write to ${path}, but you haven't granted it yet.`,
+        message: `Momo requested permissions to write to ${path}, but you haven't granted it yet.`,
         classifierApprovable: true,
       }
     }
@@ -654,7 +654,7 @@ export function checkPathSafetyForAutoEdit(
     if (isDangerousFilePathToAutoEdit(pathToCheck)) {
       return {
         safe: false,
-        message: `Claude requested permissions to edit ${path} which is a sensitive file.`,
+        message: `Momo requested permissions to edit ${path} which is a sensitive file.`,
         classifierApprovable: true,
       }
     }
@@ -1035,7 +1035,7 @@ export function checkReadPermissionForTool(
   if (typeof tool.getPath !== 'function') {
     return {
       behavior: 'ask',
-      message: `Claude requested permissions to use ${tool.name}, but you haven't granted it yet.`,
+      message: `Momo requested permissions to use ${tool.name}, but you haven't granted it yet.`,
     }
   }
   const path = tool.getPath(input)
@@ -1054,7 +1054,7 @@ export function checkReadPermissionForTool(
     if (pathToCheck.startsWith('\\\\') || pathToCheck.startsWith('//')) {
       return {
         behavior: 'ask',
-        message: `Claude requested permissions to read from ${path}, which appears to be a UNC path that could access network resources.`,
+        message: `Momo requested permissions to read from ${path}, which appears to be a UNC path that could access network resources.`,
         decisionReason: {
           type: 'other',
           reason: 'UNC path detected (defense-in-depth check)',
@@ -1068,7 +1068,7 @@ export function checkReadPermissionForTool(
     if (hasSuspiciousWindowsPathPattern(pathToCheck)) {
       return {
         behavior: 'ask',
-        message: `Claude requested permissions to read from ${path}, which contains a suspicious Windows path pattern that requires manual approval.`,
+        message: `Momo requested permissions to read from ${path}, which contains a suspicious Windows path pattern that requires manual approval.`,
         decisionReason: {
           type: 'other',
           reason:
@@ -1112,7 +1112,7 @@ export function checkReadPermissionForTool(
     if (askRule) {
       return {
         behavior: 'ask',
-        message: `Claude requested permissions to read from ${path}, but you haven't granted it yet.`,
+        message: `Momo requested permissions to read from ${path}, but you haven't granted it yet.`,
         decisionReason: {
           type: 'rule',
           rule: askRule,
@@ -1179,7 +1179,7 @@ export function checkReadPermissionForTool(
   // At this point, isInWorkingDir is false (from step #6), so path is outside working directories
   return {
     behavior: 'ask',
-    message: `Claude requested permissions to read from ${path}, but you haven't granted it yet.`,
+    message: `Momo requested permissions to read from ${path}, but you haven't granted it yet.`,
     suggestions: generateSuggestions(
       path,
       'read',
@@ -1211,7 +1211,7 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
   if (typeof tool.getPath !== 'function') {
     return {
       behavior: 'ask',
-      message: `Claude requested permissions to use ${tool.name}, but you haven't granted it yet.`,
+      message: `Momo requested permissions to use ${tool.name}, but you haven't granted it yet.`,
     }
   }
   const path = tool.getPath(input)
@@ -1239,7 +1239,7 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
   }
 
   // 1.5. Allow writes to internal editable paths (plan files, scratchpad)
-  // This MUST come before isDangerousFilePathToAutoEdit check since .claude is a dangerous directory
+  // This MUST come before isDangerousFilePathToAutoEdit check since .momo is a dangerous directory
   const absolutePathForEdit = expandPath(path)
   const internalEditResult = checkEditableInternalPath(
     absolutePathForEdit,
@@ -1258,7 +1258,7 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
   // also has a broader Edit(.claude) rule in userSettings (e.g. from sandbox
   // write-allow conversion), that rule would be found first and its source check
   // below would fail. Scope the search to session-only rules so the dialog's
-  // "allow Claude to edit its own settings for this session" option actually works.
+  // "allow Momo to edit its own settings for this session" option actually works.
   const claudeFolderAllowRule = matchingRuleForInput(
     path,
     {
@@ -1299,7 +1299,7 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
     }
   }
 
-  // 1.7. Check comprehensive safety validations (Windows patterns, Claude config, dangerous files)
+  // 1.7. Check comprehensive safety validations (Windows patterns, Momo config, dangerous files)
   // This MUST come before checking allow rules to prevent users from accidentally granting
   // permission to edit protected files
   const safetyCheck = checkPathSafetyForAutoEdit(path, pathsToCheck)
@@ -1309,7 +1309,7 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
     // Everything else (.claude/settings.json, .git/, .vscode/, .idea/) falls
     // back to generateSuggestions — its setMode suggestion doesn't bypass
     // this check, but preserving it avoids a surprising empty array.
-    const skillScope = getClaudeSkillScope(path)
+    const skillScope = getMomoSkillScope(path)
     const safetySuggestions: PermissionUpdate[] = skillScope
       ? [
           {
@@ -1348,7 +1348,7 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
     if (askRule) {
       return {
         behavior: 'ask',
-        message: `Claude requested permissions to write to ${path}, but you haven't granted it yet.`,
+        message: `Momo requested permissions to write to ${path}, but you haven't granted it yet.`,
         decisionReason: {
           type: 'rule',
           rule: askRule,
@@ -1395,7 +1395,7 @@ export function checkWritePermissionForTool<Input extends AnyObject>(
   // 5. Default to asking for permission
   return {
     behavior: 'ask',
-    message: `Claude requested permissions to write to ${path}, but you haven't granted it yet.`,
+    message: `Momo requested permissions to write to ${path}, but you haven't granted it yet.`,
     suggestions: generateSuggestions(
       path,
       'write',
@@ -1520,12 +1520,12 @@ export function checkEditableInternalPath(
   if (feature('TEMPLATES')) {
     const jobDir = process.env.CLAUDE_JOB_DIR
     if (jobDir) {
-      const jobsRoot = join(getClaudeConfigHomeDir(), 'jobs')
+      const jobsRoot = join(getMomoConfigHomeDir(), 'jobs')
       const jobDirForms = getPathsForPermissionCheck(jobDir).map(normalize)
       const jobsRootForms = getPathsForPermissionCheck(jobsRoot).map(normalize)
       // Hijack guard: every resolved form of the job dir must sit under
       // some resolved form of the jobs root. Resolving both sides handles
-      // the case where ~/.claude is a symlink (e.g. to /data/claude-config).
+      // the case where ~/.momo is a symlink (e.g. to /data/claude-config).
       const isUnderJobsRoot = jobDirForms.every(jd =>
         jobsRootForms.some(jr => jd.startsWith(jr + sep)),
       )
@@ -1581,7 +1581,7 @@ export function checkEditableInternalPath(
   }
 
   // .claude/launch.json — desktop preview config (dev server command + port).
-  // The desktop's preview_start MCP tool instructs Claude to create/update
+  // The desktop's preview_start MCP tool instructs Momo to create/update
   // this file as part of the preview workflow. Without this carve-out the
   // .claude/ DANGEROUS_DIRECTORIES check prompts for it, which in SDK mode
   // cascades: user clicks "Always allow" → setMode:acceptEdits suggestion
@@ -1725,7 +1725,7 @@ export function checkReadableInternalPath(
   }
 
   // Tasks directory (~/.claude/tasks/) for swarm task coordination
-  const tasksDir = join(getClaudeConfigHomeDir(), 'tasks') + sep
+  const tasksDir = join(getMomoConfigHomeDir(), 'tasks') + sep
   if (
     normalizedPath === tasksDir.slice(0, -1) ||
     normalizedPath.startsWith(tasksDir)
@@ -1741,7 +1741,7 @@ export function checkReadableInternalPath(
   }
 
   // Teams directory (~/.claude/teams/) for swarm coordination
-  const teamsReadDir = join(getClaudeConfigHomeDir(), 'teams') + sep
+  const teamsReadDir = join(getMomoConfigHomeDir(), 'teams') + sep
   if (
     normalizedPath === teamsReadDir.slice(0, -1) ||
     normalizedPath.startsWith(teamsReadDir)

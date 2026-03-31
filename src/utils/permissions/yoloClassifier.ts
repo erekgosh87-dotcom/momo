@@ -5,7 +5,7 @@ import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { z } from 'zod/v4'
 import {
-  getCachedClaudeMdContent,
+  getCachedMomoMdContent,
   getLastClassifierRequests,
   getSessionId,
   setLastClassifierRequests,
@@ -41,7 +41,7 @@ import {
   extractToolUseBlock,
   parseClassifierResponse,
 } from './classifierShared.js'
-import { getClaudeTempDir } from './filesystem.js'
+import { getMomoTempDir } from './filesystem.js'
 
 // Dead code elimination: conditional imports for auto mode classifier prompts.
 // At build time, the bundler inlines .txt files as string literals. At test
@@ -56,7 +56,7 @@ const BASE_PROMPT: string = feature('TRANSCRIPT_CLASSIFIER')
   : ''
 
 // External template is loaded separately so it's available for
-// `claude auto-mode defaults` even in ant builds. Ant builds use
+// `momo auto-mode defaults` even in ant builds. Ant builds use
 // permissions_anthropic.txt at runtime but should dump external defaults.
 const EXTERNAL_PERMISSIONS_TEMPLATE: string = feature('TRANSCRIPT_CLASSIFIER')
   ? txtRequire(require('./yolo-classifier-prompts/permissions_external.txt'))
@@ -94,7 +94,7 @@ export type AutoModeRules = {
  * <user_*_to_replace> tags (user settings REPLACE these defaults), so the
  * captured tag contents ARE the defaults. Bullet items are single-line in the
  * template; each line starting with `- ` becomes one array entry.
- * Used by `claude auto-mode defaults`. Always returns external defaults,
+ * Used by `momo auto-mode defaults`. Always returns external defaults,
  * never the Anthropic-internal template.
  */
 export function getDefaultExternalAutoModeRules(): AutoModeRules {
@@ -119,7 +119,7 @@ function extractTaggedBullets(tagName: string): string[] {
 
 /**
  * Returns the full external classifier system prompt with default rules (no user
- * overrides). Used by `claude auto-mode critique` to show the model how the
+ * overrides). Used by `momo auto-mode critique` to show the model how the
  * classifier sees its instructions.
  */
 export function buildDefaultExternalSystemPrompt(): string {
@@ -142,12 +142,12 @@ export function buildDefaultExternalSystemPrompt(): string {
 }
 
 function getAutoModeDumpDir(): string {
-  return join(getClaudeTempDir(), 'auto-mode')
+  return join(getMomoTempDir(), 'auto-mode')
 }
 
 /**
  * Dump the auto mode classifier request and response bodies to the per-user
- * claude temp directory when CLAUDE_CODE_DUMP_AUTO_MODE is set. Files are
+ * momo temp directory when CLAUDE_CODE_DUMP_AUTO_MODE is set. Files are
  * named by unix timestamp: {timestamp}[.{suffix}].req.json and .res.json
  */
 async function maybeDumpAutoMode(
@@ -185,7 +185,7 @@ async function maybeDumpAutoMode(
  */
 export function getAutoModeClassifierErrorDumpPath(): string {
   return join(
-    getClaudeTempDir(),
+    getMomoTempDir(),
     'auto-mode-classifier-errors',
     `${getSessionId()}.txt`,
   )
@@ -205,7 +205,7 @@ export function getAutoModeClassifierTranscript(): string | null {
 
 /**
  * Dump classifier input prompts + context-comparison diagnostics on API error.
- * Written to a session-scoped file in the claude temp dir so /share can collect
+ * Written to a session-scoped file in the momo temp dir so /share can collect
  * it (replaces the old Desktop dump). Includes context numbers to help diagnose
  * projection divergence (classifier tokens >> main loop tokens).
  * Returns the dump path on success, null on failure.
@@ -442,11 +442,11 @@ export function buildTranscriptForClassifier(
 }
 
 /**
- * Build the CLAUDE.md prefix message for the classifier. Returns null when
- * CLAUDE.md is disabled or empty. The content is wrapped in a delimiter that
+ * Build the MOMO.md prefix message for the classifier. Returns null when
+ * MOMO.md is disabled or empty. The content is wrapped in a delimiter that
  * tells the classifier this is user-provided configuration — actions
  * described here reflect user intent. cache_control is set because the
- * content is static per-session, making the system + CLAUDE.md prefix a
+ * content is static per-session, making the system + MOMO.md prefix a
  * stable cache prefix across classifier calls.
  *
  * Reads from bootstrap/state.ts cache (populated by context.ts) instead of
@@ -454,11 +454,11 @@ export function buildTranscriptForClassifier(
  * permissions → yoloClassifier is a cycle. context.ts already gates on
  * CLAUDE_CODE_DISABLE_CLAUDE_MDS and normalizes '' to null before caching.
  * If the cache is unpopulated (tests, or an entrypoint that never calls
- * getUserContext), the classifier proceeds without CLAUDE.md — same as
+ * getUserContext), the classifier proceeds without MOMO.md — same as
  * pre-PR behavior.
  */
-function buildClaudeMdMessage(): Anthropic.MessageParam | null {
-  const claudeMd = getCachedClaudeMdContent()
+function buildMomoMdMessage(): Anthropic.MessageParam | null {
+  const claudeMd = getCachedMomoMdContent()
   if (claudeMd === null) return null
   return {
     role: 'user',
@@ -466,7 +466,7 @@ function buildClaudeMdMessage(): Anthropic.MessageParam | null {
       {
         type: 'text',
         text:
-          `The following is the user's CLAUDE.md configuration. These are ` +
+          `The following is the user's MOMO.md configuration. These are ` +
           `instructions the user provided to the agent and should be treated ` +
           `as part of the user's intent when evaluating actions.\n\n` +
           `<user_claude_md>\n${claudeMd}\n</user_claude_md>`,
@@ -1030,7 +1030,7 @@ export async function classifyYoloAction(
 
   const systemPrompt = await buildYoloSystemPrompt(context)
   const transcriptEntries = buildTranscriptEntries(messages)
-  const claudeMdMessage = buildClaudeMdMessage()
+  const claudeMdMessage = buildMomoMdMessage()
   const prefixMessages: Anthropic.MessageParam[] = claudeMdMessage
     ? [claudeMdMessage]
     : []
@@ -1097,7 +1097,7 @@ export async function classifyYoloAction(
   // Place cache_control on the action block. In the two-stage classifier,
   // stage 2 shares the same transcript+action prefix as stage 1 — the
   // breakpoint here gives stage 2 a guaranteed cache hit on the full prefix.
-  // Budget: system (1) + CLAUDE.md (0–1) + action (1) = 2–3, under the
+  // Budget: system (1) + MOMO.md (0–1) + action (1) = 2–3, under the
   // API limit of 4 cache_control blocks.
   userContentBlocks.push({
     type: 'text' as const,

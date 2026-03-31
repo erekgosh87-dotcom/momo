@@ -262,7 +262,7 @@ import { collectContextData } from 'src/commands/context/context-noninteractive.
 import { LOCAL_COMMAND_STDOUT_TAG } from 'src/constants/xml.js'
 import {
   statusListeners,
-  type ClaudeAILimits,
+  type MomoAILimits,
 } from 'src/services/claudeAiLimits.js'
 import {
   getDefaultMainLoopModel,
@@ -1126,7 +1126,7 @@ function runHeadlessStreaming(
   // Set up rate limit status listener to emit SDKRateLimitEvent for all status changes.
   // Emitting for all statuses (including 'allowed') ensures consumers can clear warnings
   // when rate limits reset. The upstream emitStatusChange already deduplicates via isEqual.
-  const rateLimitListener = (limits: ClaudeAILimits) => {
+  const rateLimitListener = (limits: MomoAILimits) => {
     const rateLimitInfo = toSDKRateLimitInfo(limits)
     if (rateLimitInfo) {
       output.enqueue({
@@ -3517,7 +3517,7 @@ function runHeadlessStreaming(
           // both URLs and wait. Automatic URL → localhost listener catches
           // the redirect if the browser is on this host; manual URL → the
           // success page shows "code#state" for claude_oauth_callback.
-          const { loginWithClaudeAi } = message.request
+          const { loginWithMomoAi } = message.request
 
           // Clean up any prior flow. cleanup() closes the localhost listener
           // and nulls the manual resolver. The prior `flow` promise is left
@@ -3527,7 +3527,7 @@ function runHeadlessStreaming(
           claudeOAuth?.service.cleanup()
 
           logEvent('tengu_oauth_flow_start', {
-            loginWithClaudeAi: loginWithClaudeAi ?? true,
+            loginWithMomoAi: loginWithMomoAi ?? true,
           })
 
           const service = new OAuthService()
@@ -3550,7 +3550,7 @@ function runHeadlessStreaming(
                 urlResolver({ manualUrl, automaticUrl: automaticUrl! })
               },
               {
-                loginWithClaudeAi: loginWithClaudeAi ?? true,
+                loginWithMomoAi: loginWithMomoAi ?? true,
                 skipBrowserOpen: true,
               },
             )
@@ -3558,11 +3558,11 @@ function runHeadlessStreaming(
               // installOAuthTokens: performLogout (clear stale state) →
               // store profile → saveOAuthTokensIfNeeded → clearOAuthTokenCache
               // → clearAuthRelatedCaches. After this resolves, the memoized
-              // getClaudeAIOAuthTokens in this process is invalidated; the
+              // getMomoAIOAuthTokens in this process is invalidated; the
               // next API call re-reads keychain/file and works. No respawn.
               await installOAuthTokens(tokens)
               logEvent('tengu_oauth_success', {
-                loginWithClaudeAi: loginWithClaudeAi ?? true,
+                loginWithMomoAi: loginWithMomoAi ?? true,
               })
             })
             .finally(() => {
@@ -5036,7 +5036,7 @@ async function loadInitialMessages(
       )
       if (!parsedSessionId) {
         let errorMessage =
-          'Error: --resume requires a valid session ID when used with --print. Usage: claude -p --resume <session-id>'
+          'Error: --resume requires a valid session ID when used with --print. Usage: momo -p --resume <session-id>'
         if (typeof options.resume === 'string') {
           errorMessage += `. Session IDs must be in UUID format (e.g., 550e8400-e29b-41d4-a716-446655440000). Provided value "${options.resume}" is not a valid UUID`
         }

@@ -42,10 +42,10 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import {
-  dedupClaudeAiMcpServers,
+  dedupMomoAiMcpServers,
   doesEnterpriseMcpConfigExist,
   filterMcpServersByPolicy,
-  getClaudeCodeMcpConfigs,
+  getMomoCodeMcpConfigs,
   isMcpServerDisabled,
   setMcpServerEnabled,
 } from 'src/services/mcp/config.js'
@@ -77,8 +77,8 @@ import {
   isChannelPermissionRelayEnabled,
 } from './channelPermissions.js'
 import {
-  clearClaudeAIMcpConfigsCache,
-  fetchClaudeAIMcpConfigsIfEligible,
+  clearMomoAIMcpConfigsCache,
+  fetchMomoAIMcpConfigsIfEligible,
 } from './claudeai.js'
 import { registerElicitationHandler } from './elicitationHandler.js'
 import { getMcpPrefix } from './mcpStringUtils.js'
@@ -147,7 +147,7 @@ export function useManageMCPConnections(
   const store = useAppStateStore()
   const _authVersion = useAppState(s => s.authVersion)
   // Incremented by /reload-plugins (refreshActivePlugins) to pick up newly
-  // enabled plugin MCP servers. getClaudeCodeMcpConfigs() reads loadAllPlugins()
+  // enabled plugin MCP servers. getMomoCodeMcpConfigs() reads loadAllPlugins()
   // which has been cleared by refreshActivePlugins, so the effects below see
   // fresh plugin data on re-run.
   const _pluginReconnectKey = useAppState(s => s.mcp.pluginReconnectKey)
@@ -184,7 +184,7 @@ export function useManageMCPConnections(
       // ship without this. Checked at mount; mid-session flips need restart.
       // If off, callbacks never go into AppState → interactiveHandler sees
       // undefined → never sends → intercept has nothing pending → "yes tbxkq"
-      // flows to Claude as normal chat. One gate, full disable.
+      // flows to Momo as normal chat. One gate, full disable.
       if (!isChannelPermissionRelayEnabled()) return
       setAppState(prev => {
         if (prev.channelPermissionCallbacks === callbacks) return prev
@@ -773,7 +773,7 @@ export function useManageMCPConnections(
     async function initializeServersAsPending() {
       const { servers: existingConfigs, errors: mcpErrors } = isStrictMcpConfig
         ? { servers: {}, errors: [] }
-        : await getClaudeCodeMcpConfigs(dynamicMcpConfig)
+        : await getMomoCodeMcpConfigs(dynamicMcpConfig)
       const configs = { ...existingConfigs, ...dynamicMcpConfig }
 
       // Add MCP errors to plugin errors for UI visibility (deduplicated)
@@ -854,7 +854,7 @@ export function useManageMCPConnections(
   ])
 
   // Load MCP configs and connect to servers
-  // Two-phase loading: Claude Code configs first (fast), then claude.ai configs (may be slow)
+  // Two-phase loading: Momo Code configs first (fast), then claude.ai configs (may be slow)
   useEffect(() => {
     let cancelled = false
 
@@ -862,23 +862,23 @@ export function useManageMCPConnections(
       // Clear claude.ai MCP cache so we fetch fresh configs with current auth
       // state. This is important when authVersion changes (e.g., after login/
       // logout). Kick off the fetch now so it overlaps with loadAllPlugins()
-      // inside getClaudeCodeMcpConfigs; it's awaited only at the dedup step.
+      // inside getMomoCodeMcpConfigs; it's awaited only at the dedup step.
       // Phase 2 below awaits the same promise — no second network call.
       let claudeaiPromise: Promise<Record<string, ScopedMcpServerConfig>>
       if (isStrictMcpConfig || doesEnterpriseMcpConfigExist()) {
         claudeaiPromise = Promise.resolve({})
       } else {
-        clearClaudeAIMcpConfigsCache()
-        claudeaiPromise = fetchClaudeAIMcpConfigsIfEligible()
+        clearMomoAIMcpConfigsCache()
+        claudeaiPromise = fetchMomoAIMcpConfigsIfEligible()
       }
 
-      // Phase 1: Load Claude Code configs. Plugin MCP servers that duplicate a
+      // Phase 1: Load Momo Code configs. Plugin MCP servers that duplicate a
       // --mcp-config entry or a claude.ai connector are suppressed here so they
       // don't connect alongside the connector in Phase 2.
       const { servers: claudeCodeConfigs, errors: mcpErrors } =
         isStrictMcpConfig
           ? { servers: {}, errors: [] }
-          : await getClaudeCodeMcpConfigs(dynamicMcpConfig, claudeaiPromise)
+          : await getMomoCodeMcpConfigs(dynamicMcpConfig, claudeaiPromise)
       if (cancelled) return
 
       // Add MCP errors to plugin errors for UI visibility (deduplicated)
@@ -886,7 +886,7 @@ export function useManageMCPConnections(
 
       const configs = { ...claudeCodeConfigs, ...dynamicMcpConfig }
 
-      // Start connecting to Claude Code servers (don't wait - runs concurrently with Phase 2)
+      // Start connecting to Momo Code servers (don't wait - runs concurrently with Phase 2)
       // Filter out disabled servers to avoid unnecessary connection attempts
       const enabledConfigs = Object.fromEntries(
         Object.entries(configs).filter(([name]) => !isMcpServerDisabled(name)),
@@ -913,11 +913,11 @@ export function useManageMCPConnections(
         // Keys never collide (`slack` vs `claude.ai Slack`) so the merge below
         // won't catch this — need content-based dedup by URL signature.
         if (Object.keys(claudeaiConfigs).length > 0) {
-          const { servers: dedupedClaudeAi } = dedupClaudeAiMcpServers(
+          const { servers: dedupedMomoAi } = dedupMomoAiMcpServers(
             claudeaiConfigs,
             configs,
           )
-          claudeaiConfigs = dedupedClaudeAi
+          claudeaiConfigs = dedupedMomoAi
         }
 
         if (Object.keys(claudeaiConfigs).length > 0) {
@@ -946,14 +946,14 @@ export function useManageMCPConnections(
           })
 
           // Now start connecting (only enabled servers)
-          const enabledClaudeaiConfigs = Object.fromEntries(
+          const enabledMomoaiConfigs = Object.fromEntries(
             Object.entries(claudeaiConfigs).filter(
               ([name]) => !isMcpServerDisabled(name),
             ),
           )
           getMcpToolsCommandsAndResources(
             onConnectionAttempt,
-            enabledClaudeaiConfigs,
+            enabledMomoaiConfigs,
           ).catch(error => {
             logMCPError(
               'useManageMcpConnections',

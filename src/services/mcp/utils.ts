@@ -6,7 +6,7 @@ import type { AgentMcpServerInfo } from '../../components/mcp/types.js'
 import type { Tool } from '../../Tool.js'
 import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js'
 import { getCwd } from '../../utils/cwd.js'
-import { getGlobalClaudeFile } from '../../utils/env.js'
+import { getGlobalMomoFile } from '../../utils/env.js'
 import { isSettingSourceEnabled } from '../../utils/settings/constants.js'
 import {
   getSettings_DEPRECATED,
@@ -263,11 +263,11 @@ export function isMcpCommand(command: Command): boolean {
 export function describeMcpConfigFilePath(scope: ConfigScope): string {
   switch (scope) {
     case 'user':
-      return getGlobalClaudeFile()
+      return getGlobalMomoFile()
     case 'project':
       return join(getCwd(), '.mcp.json')
     case 'local':
-      return `${getGlobalClaudeFile()} [project: ${getCwd()}]`
+      return `${getGlobalMomoFile()} [project: ${getCwd()}]`
     case 'dynamic':
       return 'Dynamically configured'
     case 'enterprise':
@@ -390,7 +390,7 @@ export function getProjectMcpServerStatus(
     return 'approved'
   }
 
-  // In non-interactive mode (SDK, claude -p, piped input), there's no way to
+  // In non-interactive mode (SDK, momo -p, piped input), there's no way to
   // show an approval popup. Auto-approve if projectSettings is enabled since:
   // 1. The user/developer explicitly chose to run in this mode
   // 2. For SDK, projectSettings is off by default - they must explicitly enable it

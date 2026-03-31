@@ -7,7 +7,7 @@ import { getRelativeMemoryPath } from '../../components/memory/MemoryUpdateNotif
 import { Box, Link, Text } from '../../ink.js';
 import type { LocalJSXCommandCall } from '../../types/command.js';
 import { clearMemoryFileCaches, getMemoryFiles } from '../../utils/claudemd.js';
-import { getClaudeConfigHomeDir } from '../../utils/envUtils.js';
+import { getMomoConfigHomeDir } from '../../utils/envUtils.js';
 import { getErrnoCode } from '../../utils/errors.js';
 import { logError } from '../../utils/log.js';
 import { editFileInEditor } from '../../utils/promptEditor.js';
@@ -20,9 +20,9 @@ function MemoryCommand({
 }): React.ReactNode {
   const handleSelectMemoryFile = async (memoryPath: string) => {
     try {
-      // Create claude directory if it doesn't exist (idempotent with recursive)
-      if (memoryPath.includes(getClaudeConfigHomeDir())) {
-        await mkdir(getClaudeConfigHomeDir(), {
+      // Create momo directory if it doesn't exist (idempotent with recursive)
+      if (memoryPath.includes(getMomoConfigHomeDir())) {
+        await mkdir(getMomoConfigHomeDir(), {
           recursive: true
         });
       }

@@ -119,10 +119,10 @@ export async function enrollTrustedDevice(): Promise<void> {
     // (config → file → permissions → sessionStorage → commands). Daemon callers
     // of getTrustedDeviceToken() don't need this; only /login does.
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { getClaudeAIOAuthTokens } =
+    const { getMomoAIOAuthTokens } =
       require('../utils/auth.js') as typeof import('../utils/auth.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
-    const accessToken = getClaudeAIOAuthTokens()?.accessToken
+    const accessToken = getMomoAIOAuthTokens()?.accessToken
     if (!accessToken) {
       logForDebugging('[trusted-device] No OAuth token, skipping enrollment')
       return
@@ -147,7 +147,7 @@ export async function enrollTrustedDevice(): Promise<void> {
         device_id?: string
       }>(
         `${baseUrl}/api/auth/trusted_devices`,
-        { display_name: `Claude Code on ${hostname()} · ${process.platform}` },
+        { display_name: `Momo Code on ${hostname()} · ${process.platform}` },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,

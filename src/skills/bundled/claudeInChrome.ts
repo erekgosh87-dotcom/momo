@@ -1,6 +1,6 @@
 import { BASE_CHROME_PROMPT } from '../../utils/claudeInChrome/prompt.js'
 import { getChromeBrowserTools } from '../../utils/claudeInChrome/package.js'
-import { shouldAutoEnableClaudeInChrome } from '../../utils/claudeInChrome/setup.js'
+import { shouldAutoEnableMomoInChrome } from '../../utils/claudeInChrome/setup.js'
 import { registerBundledSkill } from '../bundledSkills.js'
 
 const SKILL_ACTIVATION_MESSAGE = `
@@ -9,7 +9,7 @@ Now that this skill is invoked, you have access to Chrome browser automation too
 IMPORTANT: Start by calling mcp__claude-in-chrome__tabs_context_mcp to get information about the user's current browser tabs.
 `
 
-export function registerClaudeInChromeSkill(): void {
+export function registerMomoInChromeSkill(): void {
   const allowedTools = getChromeBrowserTools().map(
     tool => `mcp__claude-in-chrome__${tool.name}`,
   )
@@ -22,7 +22,7 @@ export function registerClaudeInChromeSkill(): void {
       'When the user wants to interact with web pages, automate browser tasks, capture screenshots, read console logs, or perform any browser-based actions. Always invoke BEFORE attempting to use any mcp__claude-in-chrome__* tools.',
     allowedTools,
     userInvocable: true,
-    isEnabled: () => shouldAutoEnableClaudeInChrome(),
+    isEnabled: () => shouldAutoEnableMomoInChrome(),
     async getPromptForCommand(args) {
       let prompt = `${BASE_CHROME_PROMPT}\n${SKILL_ACTIVATION_MESSAGE}`
       if (args) {

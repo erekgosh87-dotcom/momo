@@ -162,7 +162,7 @@ export function isPathAllowed(
   }
 
   // 2. For write/create operations, check internal editable paths (plan files, scratchpad, agent memory, job dirs)
-  // This MUST come before checkPathSafetyForAutoEdit since .claude is a dangerous directory
+  // This MUST come before checkPathSafetyForAutoEdit since .momo is a dangerous directory
   // and internal editable paths live under ~/.claude/ — matching the ordering in
   // checkWritePermissionForTool (filesystem.ts step 1.5)
   if (operationType !== 'read') {
@@ -177,7 +177,7 @@ export function isPathAllowed(
 
   // 2.5. For write/create operations, check comprehensive safety validations
   // This MUST come before checking working directory to prevent bypass via acceptEdits mode
-  // Checks: Windows patterns, Claude config files, dangerous files (on original + symlink paths)
+  // Checks: Windows patterns, Momo config files, dangerous files (on original + symlink paths)
   if (operationType !== 'read') {
     const safetyCheck = checkPathSafetyForAutoEdit(
       resolvedPath,

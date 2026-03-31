@@ -10,7 +10,7 @@ import {
 } from 'src/services/analytics/index.js'
 import { getProjectRoot } from '../bootstrap/state.js'
 import { logForDebugging } from './debug.js'
-import { getClaudeConfigHomeDir, isEnvTruthy } from './envUtils.js'
+import { getMomoConfigHomeDir, isEnvTruthy } from './envUtils.js'
 import { isFsInaccessible } from './errors.js'
 import { normalizePathForComparison } from './file.js'
 import type { FrontmatterData } from './frontmatterParser.js'
@@ -25,7 +25,7 @@ import {
 import { getManagedFilePath } from './settings/managedPath.js'
 import { isRestrictedToPluginOnly } from './settings/pluginOnlyPolicy.js'
 
-// Claude configuration directory names
+// Momo configuration directory names
 export const CLAUDE_CONFIG_DIRECTORIES = [
   'commands',
   'agents',
@@ -35,7 +35,7 @@ export const CLAUDE_CONFIG_DIRECTORIES = [
   ...(feature('TEMPLATES') ? (['templates'] as const) : []),
 ] as const
 
-export type ClaudeConfigDirectory = (typeof CLAUDE_CONFIG_DIRECTORIES)[number]
+export type MomoConfigDirectory = (typeof CLAUDE_CONFIG_DIRECTORIES)[number]
 
 export type MarkdownFile = {
   filePath: string
@@ -221,7 +221,7 @@ function resolveStopBoundary(cwd: string): string | null {
 
 /**
  * Traverses from the current directory up to the git root (or home directory if not in a git repo),
- * collecting all .claude directories along the way.
+ * collecting all .momo directories along the way.
  *
  * Stopping at git root prevents commands/skills from parent directories outside the repository
  * from leaking into projects. For example, if ~/projects/.claude/commands/ exists, it won't
@@ -232,7 +232,7 @@ function resolveStopBoundary(cwd: string): string | null {
  * @returns Array of directory paths containing .claude/subdir, from most specific (cwd) to least specific
  */
 export function getProjectDirsUpToHome(
-  subdir: ClaudeConfigDirectory,
+  subdir: MomoConfigDirectory,
   cwd: string,
 ): string[] {
   const home = resolve(homedir()).normalize('NFC')
@@ -296,11 +296,11 @@ export function getProjectDirsUpToHome(
  */
 export const loadMarkdownFilesForSubdir = memoize(
   async function (
-    subdir: ClaudeConfigDirectory,
+    subdir: MomoConfigDirectory,
     cwd: string,
   ): Promise<MarkdownFile[]> {
     const searchStartTime = Date.now()
-    const userDir = join(getClaudeConfigHomeDir(), subdir)
+    const userDir = join(getMomoConfigHomeDir(), subdir)
     const managedDir = join(getManagedFilePath(), '.claude', subdir)
     const projectDirs = getProjectDirsUpToHome(subdir, cwd)
 
@@ -327,9 +327,9 @@ export const loadMarkdownFilesForSubdir = memoize(
         dir => normalizePathForComparison(dir) === worktreeSubdir,
       )
       if (!worktreeHasSubdir) {
-        const mainClaudeSubdir = join(canonicalRoot, '.claude', subdir)
-        if (!projectDirs.includes(mainClaudeSubdir)) {
-          projectDirs.push(mainClaudeSubdir)
+        const mainMomoSubdir = join(canonicalRoot, '.claude', subdir)
+        if (!projectDirs.includes(mainMomoSubdir)) {
+          projectDirs.push(mainMomoSubdir)
         }
       }
     }
@@ -378,7 +378,7 @@ export const loadMarkdownFilesForSubdir = memoize(
     const allFiles = [...managedFiles, ...userFiles, ...projectFiles]
 
     // Deduplicate files that resolve to the same physical file (same inode).
-    // This prevents the same file from appearing multiple times when ~/.claude is
+    // This prevents the same file from appearing multiple times when ~/.momo is
     // symlinked to a directory within the project hierarchy, causing the same
     // physical file to be discovered through different paths.
     const fileIdentities = await Promise.all(
@@ -426,7 +426,7 @@ export const loadMarkdownFilesForSubdir = memoize(
     return deduplicatedFiles
   },
   // Custom resolver creates cache key from both subdir and cwd parameters
-  (subdir: ClaudeConfigDirectory, cwd: string) => `${subdir}:${cwd}`,
+  (subdir: MomoConfigDirectory, cwd: string) => `${subdir}:${cwd}`,
 )
 
 /**

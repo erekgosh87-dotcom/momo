@@ -40,7 +40,7 @@ export type ContextWarnings = {
   unreachableRulesWarning: ContextWarning | null
 }
 
-async function checkClaudeMdFiles(): Promise<ContextWarning | null> {
+async function checkMomoMdFiles(): Promise<ContextWarning | null> {
   const largeFiles = getLargeMemoryFiles(await getMemoryFiles())
 
   // This already filters for files > 40k chars each
@@ -54,8 +54,8 @@ async function checkClaudeMdFiles(): Promise<ContextWarning | null> {
 
   const message =
     largeFiles.length === 1
-      ? `Large CLAUDE.md file detected (${largeFiles[0]!.content.length.toLocaleString()} chars > ${MAX_MEMORY_CHARACTER_COUNT.toLocaleString()})`
-      : `${largeFiles.length} large CLAUDE.md files detected (each > ${MAX_MEMORY_CHARACTER_COUNT.toLocaleString()} chars)`
+      ? `Large MOMO.md file detected (${largeFiles[0]!.content.length.toLocaleString()} chars > ${MAX_MEMORY_CHARACTER_COUNT.toLocaleString()})`
+      : `${largeFiles.length} large MOMO.md files detected (each > ${MAX_MEMORY_CHARACTER_COUNT.toLocaleString()} chars)`
 
   return {
     type: 'claudemd_files',
@@ -250,7 +250,7 @@ export async function checkContextWarnings(
 ): Promise<ContextWarnings> {
   const [claudeMdWarning, agentWarning, mcpWarning, unreachableRulesWarning] =
     await Promise.all([
-      checkClaudeMdFiles(),
+      checkMomoMdFiles(),
       checkAgentDescriptions(agentInfo),
       checkMcpTools(tools, getToolPermissionContext, agentInfo),
       checkUnreachableRules(getToolPermissionContext),

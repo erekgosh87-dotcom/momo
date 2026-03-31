@@ -511,7 +511,7 @@ async function performPostCreationSetup(
   repoRoot: string,
   worktreePath: string,
 ): Promise<void> {
-  // Copy settings.local.json to the worktree's .claude directory
+  // Copy settings.local.json to the worktree's .momo directory
   // This propagates local settings (which may contain secrets) to the worktree
   const localSettingsRelativePath =
     getRelativeSettingsFilePathForSource('localSettings')
@@ -1174,7 +1174,7 @@ export async function hasWorktreeChanges(
 
 /**
  * Fast-path handler for --worktree --tmux.
- * Creates the worktree and execs into tmux running Claude inside.
+ * Creates the worktree and execs into tmux running Momo inside.
  * This is called early in cli.tsx before loading the full CLI.
  */
 export async function execIntoTmuxWorktree(args: string[]): Promise<{
@@ -1339,8 +1339,8 @@ export async function execIntoTmuxWorktree(args: string[]): Promise<{
     }
   }
 
-  // Check if tmux prefix conflicts with Claude keybindings
-  // Claude binds: ctrl+b (task:background), ctrl+c, ctrl+d, ctrl+t, ctrl+o, ctrl+r, ctrl+s, ctrl+g, ctrl+e
+  // Check if tmux prefix conflicts with Momo keybindings
+  // Momo binds: ctrl+b (task:background), ctrl+c, ctrl+d, ctrl+t, ctrl+o, ctrl+r, ctrl+s, ctrl+g, ctrl+e
   const claudeBindings = [
     'C-b',
     'C-c',
@@ -1354,7 +1354,7 @@ export async function execIntoTmuxWorktree(args: string[]): Promise<{
   ]
   const prefixConflicts = claudeBindings.includes(tmuxPrefix)
 
-  // Set env vars for the inner Claude to display tmux info in welcome message
+  // Set env vars for the inner Momo to display tmux info in welcome message
   const tmuxEnv = {
     ...process.env,
     CLAUDE_CODE_TMUX_SESSION: tmuxSessionName,
@@ -1394,11 +1394,11 @@ export async function execIntoTmuxWorktree(args: string[]): Promise<{
 
   // For ants in claude-cli-internal, set up dev panes (watch + start)
   const isAnt = process.env.USER_TYPE === 'ant'
-  const isClaudeCliInternal = repoName === 'claude-cli-internal'
-  const shouldSetupDevPanes = isAnt && isClaudeCliInternal && !sessionExists
+  const isMomoCliInternal = repoName === 'claude-cli-internal'
+  const shouldSetupDevPanes = isAnt && isMomoCliInternal && !sessionExists
 
   if (shouldSetupDevPanes) {
-    // Create detached session with Claude in first pane
+    // Create detached session with Momo in first pane
     spawnSync(
       'tmux',
       [
@@ -1437,7 +1437,7 @@ export async function execIntoTmuxWorktree(args: string[]): Promise<{
       cwd: worktreeDir,
     })
 
-    // Select the first pane (Claude)
+    // Select the first pane (Momo)
     spawnSync('tmux', ['select-pane', '-t', `${tmuxSessionName}:0.0`], {
       cwd: worktreeDir,
     })
