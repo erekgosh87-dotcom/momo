@@ -17,31 +17,32 @@ if (-not $isAdmin) {
 Write-Host ">>> MOMO: THE ULTIMATE UNLOCKED AI AGENT <<<" -ForegroundColor White
 Write-Host "Starting premium installation for Windows..." -ForegroundColor Cyan
 
-# 1. Check for Bun
-$BunPath = Get-Command bun -ErrorAction SilentlyContinue
-if (-not $BunPath) {
-    Write-Host ">>> Bun not found. Installing the Bun runtime..." -ForegroundColor Yellow
-    # Try through npm
-    npm install -g bun
+# 1. Setup Momo Directory in LocalAppData
+$MomoDest = "$env:LOCALAPPDATA\momo"
+if (-not (Test-Path $MomoDest)) {
+    New-Item -Path $MomoDest -ItemType Directory | Out-Null
 }
 
-# 2. Setup Momo Directory
-$MomoPath = "$env:LOCALAPPDATA\momo"
-if (-not (Test-Path $MomoPath)) {
-    New-Item -Path $MomoPath -ItemType Directory | Out-Null
+# 2. Check for the local binary in the current path (if running from repo)
+$LocalBinary = "$PWD\momo.exe"
+if (Test-Path $LocalBinary) {
+    Write-Host ">>> Found local binary. Copying to installation folder..." -ForegroundColor Yellow
+    Copy-Item $LocalBinary -Destination "$MomoDest\momo.exe" -Force
+} else {
+    Write-Host ">>> Local binary not found. You should build it using 'bun run compile'." -ForegroundColor Yellow
 }
 
 # 3. Add to PATH (User + System if Admin)
 $CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($CurrentPath -notlike "*$MomoPath*") {
-    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$MomoPath", "User")
+if ($CurrentPath -notlike "*$MomoDest*") {
+    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$MomoDest", "User")
     Write-Host "✅ User PATH configured." -ForegroundColor Green
 }
 
 if ($isAdmin) {
     $SystemPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-    if ($SystemPath -notlike "*$MomoPath*") {
-        [Environment]::SetEnvironmentVariable("Path", "$SystemPath;$MomoPath", "Machine")
+    if ($SystemPath -notlike "*$MomoDest*") {
+        [Environment]::SetEnvironmentVariable("Path", "$SystemPath;$MomoDest", "Machine")
         Write-Host "✅ System PATH configured (Admin)." -ForegroundColor Green
     }
 }
@@ -49,6 +50,6 @@ if ($isAdmin) {
 # 4. Final Info
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
 Write-Host "🎉 Momo installation complete!" -ForegroundColor Green
-Write-Host "👉 To start, open a NEW CMD or PowerShell window and type 'momo'." -ForegroundColor White
-Write-Host "👉 Your API Key will be saved persistently to '$HOME\.momo\config.json'." -ForegroundColor Cyan
+Write-Host "👉 To start, open a NEW CMD window and type 'momo'." -ForegroundColor White
+Write-Host "👉 Your binary is located at: $MomoDest\momo.exe" -ForegroundColor Gray
 Write-Host "--------------------------------------------------------" -ForegroundColor Cyan
